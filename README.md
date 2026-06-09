@@ -68,26 +68,150 @@ HUD layout was revised after Hint/AutoComplete were added: 390x844 portrait and 
 
 ## Architecture
 
-```text
-Data/          ScriptableObject config and shared Solitaire enums
-Rules/         Pure card ids, move resolution, validation helpers
-Runtime/       Board state, snapshots, move history, feature registration
-Input/         Board hit testing, pointer sampling, drop target resolution
-Presentation/  Drag presentation helpers
-Views/         Card, slot, drag layer, and visual state components
-Controllers/   Deck, layout, input, camera, haptics, flow bridges
-Editor/        Scene repair, validation, and debug scenario tooling
-Tests/         EditMode rules/runtime tests and PlayMode wiring smoke tests
+This project is a **LEGO-style Unity template**: gameplay is composed from existing prefabs, inspector references, small MonoBehaviours, ScriptableObject config, and centralized events — not from new global managers or scene-wide searches.
+
+### Layer model
+
+```mermaid
+flowchart TB
+    subgraph Config["Config layer — ScriptableObjects"]
+        DeckConfig["SolitaireDeckConfigSO"]
+        ScoreConfig["SolitaireScoreConfigSO"]
+        VisualCatalog["SolitaireCardVisualCatalogSO"]
+    end
+
+    subgraph Scene["Scene layer — prefab components self-register"]
+        Cards["CardView ×52"]
+        Slots["SolitaireSlotAnchor"]
+        DragLayer["SolitaireDragLayer"]
+        BoardCam["SolitaireBoardCameraController"]
+        CtrlHost["SolitaireModuleControllerHost"]
+    end
+
+    subgraph Bootstrap["Bootstrap layer — composition root"]
+        ModuleBoot["SolitaireModuleBootstrap"]
+        Registration["SolitaireFeatureRegistration"]
+        RuntimeBoot["SolitaireModuleRuntimeBootstrap"]
+        ViewRegistry["SolitaireViewRegistry"]
+    end
+
+    subgraph Controllers["Controller layer — thin orchestration"]
+        DeckCtrl["SolitaireDeckController"]
+        InputCtrl["SolitaireInputController"]
+        LayoutCtrl["SolitaireLayoutController"]
+        WinBridge["SolitaireWinBridge"]
+    end
+
+    subgraph Domain["Domain layer — pure rules + board state"]
+        Board["Board/ — SolitaireBoardState"]
+        Rules["Rules/ — move validation & handlers"]
+        Moves["Moves/ — SolitaireMoveService"]
+        Hints["Hints/ — SolitaireHintService"]
+        LayoutMath["Layout/ — responsive board calculator"]
+    end
+
+    subgraph Presentation["Presentation + Views"]
+        Presenters["Presentation/ — deal, drag, layout, win"]
+        CardViews["Views/Card — motion & visuals"]
+        BoardViews["Views/Board — drag layer, hint UI"]
+    end
+
+    subgraph Events["Event bus — existing EventManager"]
+        SolEvents["EventManager.SolitaireEvents"]
+        InGame["EventManager.InGameEvents"]
+    end
+
+    DeckConfig --> ModuleBoot
+    Scene -->|OnEnable| Registration
+    ModuleBoot --> Registration
+    Registration --> ViewRegistry
+    ModuleBoot --> RuntimeBoot
+    RuntimeBoot --> Controllers
+    Controllers --> Moves
+    Moves --> Rules
+    Moves --> Board
+    Controllers --> Hints
+    Controllers --> LayoutMath
+    Controllers -->|raise| SolEvents
+    SolEvents --> Presenters
+    Presenters --> CardViews
+    Presenters --> BoardViews
+    InGame -->|LevelStart| ModuleBoot
+    ScoreConfig --> SolEvents
 ```
 
-- Uses the existing `EventManager.SolitaireEvents` partial, not a new event bus.
-- Uses `SolitaireModuleBootstrap` as the composition root; it owns config only.
-- Uses `SolitaireFeatureRegistration` as a session registry for self-registered scene objects.
-- Uses `SolitaireMoveResolver` for validation and `SolitaireMoveExecutor` for board mutation.
-- Uses `ScoreTextManager` plus `SolitaireScoreConfigSO` for score presentation without coupling UI to controllers.
-- Uses `SolitaireHintService` for hint enumeration and autocomplete eligibility without creating a separate rules system.
-- Uses existing Unity Test Framework assemblies for EditMode and PlayMode coverage.
-- Avoids `FormerlySerializedAs` and replacement manager architecture.
+**Read the diagram top-down:** config tunes the module, scene objects register themselves, bootstrap builds the session registry, controllers orchestrate, domain services own rules/state, presentation reacts through events.
+
+### Startup flow
+
+```mermaid
+sequenceDiagram
+    participant Scene as Scene objects
+    participant Reg as SolitaireFeatureRegistration
+    participant Boot as SolitaireModuleBootstrap
+    participant RT as SolitaireModuleRuntimeBootstrap
+    participant EM as EventManager
+
+    Scene->>Reg: OnEnable — cards, slots, camera, drag layer, controller host
+    Boot->>Reg: TryCreateViewRegistry()
+    Reg-->>Boot: 52 cards + slots + camera + drag layer
+    Boot->>Reg: TryGetControllerHost()
+    Boot->>RT: Initialize(config, registry, controllers)
+    RT->>RT: Wire controllers, hide cards pre-deal
+    EM->>Boot: InGameEvents.LevelStart
+    Boot->>Boot: StartDeal() → show cards + initial deal
+```
+
+### Player move flow
+
+```mermaid
+flowchart LR
+    Pointer["Pointer / click"] --> Hit["Input/ — hit test & drop resolve"]
+    Hit --> InputCtrl["SolitaireInputController"]
+    InputCtrl --> MoveSvc["Moves/ — SolitaireMoveService"]
+    MoveSvc --> Validate["Rules/ — HandlerRegistry.TryValidate"]
+    Validate --> Execute["Rules/ — HandlerRegistry.Execute"]
+    Execute --> Board["Board/ — SolitaireBoardState"]
+    Board --> Snapshot["Undo snapshot"]
+    Board --> EM["EventManager.SolitaireEvents"]
+    EM --> Layout["Presentation/Layout — pile positions"]
+    EM --> Score["HUD score text"]
+    EM --> Undo["Undo button state"]
+```
+
+### Code folders (Solitaire module)
+
+Physical folders are split by **domain**, not by a single `Runtime/` dump. Namespaces stay stable (`Runtime`, `Controllers`, `Views`, …) so prefab script GUIDs keep working.
+
+```text
+SolitaireModule/
+├── Data/              Config assets + shared types
+├── Rules/             Pure validation, move handlers, resolver
+├── Input/             Pointer, hit test, drop targets
+├── Bootstrap/         Module start, registration, controller bundle
+├── Board/             Board state, piles, snapshots
+├── Moves/             Move service, executor, undo path
+├── Hints/             Hint + autocomplete logic
+├── Layout/            Responsive board layout math
+├── Registry/          View registry + runtime context
+├── Debug/             Debug scenario tooling
+├── Controllers/       Deck, input, layout, win bridges (thin)
+├── Presentation/      Deal / Layout / Drag / Win presenters
+├── Views/             Card / Slots / Board / Fx view components
+└── Editor/            Scene builder, benchmarks, validation
+```
+
+### Architecture rules (short)
+
+- Uses the existing `EventManager.SolitaireEvents` partial — **no new event bus**.
+- `SolitaireModuleBootstrap` is the composition root and owns **config only** (`deckConfig`).
+- `SolitaireFeatureRegistration` is the session registry for self-registered scene objects.
+- `SolitaireMoveResolver` + `SolitaireMoveHandlerRegistry` validate; `SolitaireMoveExecutor` mutates board state.
+- Large scripts split into `*Logic` **partial** files (`CardViewLogic`, `SolitaireHintLogic`, `SolitairePileMoveRules`, …).
+- Internal static helpers hold pure rules; MonoBehaviours hold Unity lifecycle and inspector refs.
+- No `FindObjectOfType` / scene search on production paths; no replacement manager architecture.
+
+Further reading: [SOLITAIRE_MODULE_RUNTIME_WIRING.md](Docs/03_Hierarchy/SOLITAIRE_MODULE_RUNTIME_WIRING.md), [SOLITAIRE_MODULE_FOLDER_STRUCTURE.md](Docs/03_Hierarchy/SOLITAIRE_MODULE_FOLDER_STRUCTURE.md), [HOW_TO_REFACTOR_WITH_LOGIC_PARTIALS.md](Docs/02_How_To/HOW_TO_REFACTOR_WITH_LOGIC_PARTIALS.md).
 
 ## Tech Stack
 
@@ -186,6 +310,8 @@ BUILD_VERSION=cardback-20260609 npm run postbuild:publish
 | --- | --- |
 | [Docs/SolitaireKlondike_GDD.md](Docs/SolitaireKlondike_GDD.md) | Game design, rules, acceptance criteria, QA scenarios |
 | [Docs/03_Hierarchy/SOLITAIRE_MODULE_RUNTIME_WIRING.md](Docs/03_Hierarchy/SOLITAIRE_MODULE_RUNTIME_WIRING.md) | Runtime registration and scene wiring contract |
+| [Docs/03_Hierarchy/SOLITAIRE_MODULE_FOLDER_STRUCTURE.md](Docs/03_Hierarchy/SOLITAIRE_MODULE_FOLDER_STRUCTURE.md) | Solitaire script folder ownership map |
+| [Docs/02_How_To/HOW_TO_REFACTOR_WITH_LOGIC_PARTIALS.md](Docs/02_How_To/HOW_TO_REFACTOR_WITH_LOGIC_PARTIALS.md) | `*Logic` partial refactor pattern |
 | [Docs/README_TR.md](Docs/README_TR.md) | BaseProject architecture migration overview |
 | [Docs/04_Validation/VALIDATION_CHECKLIST.md](Docs/04_Validation/VALIDATION_CHECKLIST.md) | Project validation checklist |
 

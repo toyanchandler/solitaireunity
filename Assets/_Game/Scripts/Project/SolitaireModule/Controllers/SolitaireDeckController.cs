@@ -1,8 +1,8 @@
 using System;
 using _Game.Scripts.Managers.Core;
 using _Game.Scripts.Project.SolitaireModule.Data;
-using _Game.Scripts.Project.SolitaireModule.Runtime;
 using _Game.Scripts.Project.SolitaireModule.Rules;
+using _Game.Scripts.Project.SolitaireModule.Runtime;
 using UnityEngine;
 
 namespace _Game.Scripts.Project.SolitaireModule.Controllers
@@ -16,21 +16,6 @@ namespace _Game.Scripts.Project.SolitaireModule.Controllers
         private SolitaireMovePresentationHandler _presentationHandler;
         private bool _hasAnnouncedWin;
         private int _hintCycleIndex;
-
-        public event Action Ready;
-        public event Action DealStarted;
-        public event Action DealCompleted;
-        public event Action<SolitaireMove> MoveCompleted;
-        public event Action InvalidMove;
-        public event Action<int> CardFlipped;
-        public event Action<int> StockDrawn;
-        public event Action WasteRecycled;
-        public event Action<int, int> FoundationProgressChanged;
-        public event Action<int> MoveCountChanged;
-        public event Action<bool> UndoAvailabilityChanged;
-        public event Action<SolitaireHint> HintShown;
-        public event Action<int> AutoCompleteCompleted;
-        public event Action GameWon;
 
         public int CurrentMoveCount => _context?.MoveHistory.Count ?? 0;
         public bool CanUndo => _context?.MoveHistory.CanUndo ?? false;
@@ -52,16 +37,15 @@ namespace _Game.Scripts.Project.SolitaireModule.Controllers
             _context.LayoutMetrics.ResetToConfig(_config);
             _gameFlowService.ResetFoundationTracking(_context.BoardState);
             ResetHintCycle();
-            Ready?.Invoke();
+            EventManager.SolitaireEvents.Ready?.Invoke();
         }
 
         public void StartNewDeal()
         {
             EnsureInitialized();
-            _hasAnnouncedWin = false;
-            ResetHintCycle();
+            ResetSessionForNewBoard();
             _gameFlowService.PrepareNewDeal(_context, _config);
-            PublishDealStarted();
+            EventManager.SolitaireEvents.DealStarted?.Invoke();
             _presentationHandler.PlayInitialDeal(OnDealAnimationCompleted);
             PublishMoveCount();
         }
@@ -70,31 +54,23 @@ namespace _Game.Scripts.Project.SolitaireModule.Controllers
         {
             EnsureInitialized();
 
-            if (scenario == SolitaireDebugScenarioId.None)
+            SolitaireDeckCommandLogic.DebugScenarioGateResult gate =
+                SolitaireDeckCommandLogic.DebugScenario.EvaluateGate(scenario);
+
+            if (!SolitaireDeckCommandLogic.DebugScenario.IsAllowed(gate))
             {
-                Debug.LogWarning("[SolitaireDeckController] Debug scenario is None.");
+                Debug.LogWarning(SolitaireDeckCommandLogic.DebugScenario.FormatGateWarning(gate, scenario));
                 return;
             }
 
-            if (SolitaireDebugScenarioApplier.IsFlowScenario(scenario))
-            {
-                Debug.LogWarning($"[SolitaireDeckController] Flow scenario '{scenario}' must be applied through bootstrap flow handler.");
-                return;
-            }
-
-            _hasAnnouncedWin = false;
-            ResetHintCycle();
-            _context.SelectionState.Clear();
-
-            if (_context.IsDragging)
-                _context.EndDrag();
-
+            ResetSessionForNewBoard();
+            EndActiveDragIfNeeded();
             _gameFlowService.PrepareDebugScenario(_context, scenario);
-            PublishDealStarted();
+            EventManager.SolitaireEvents.DealStarted?.Invoke();
             _presentationHandler.ApplyDebugScenarioPresentation();
-            DealCompleted?.Invoke();
+            EventManager.SolitaireEvents.DealCompleted?.Invoke();
             PublishMoveCount();
-            Debug.Log($"[SolitaireDeckController] temp — Debug scenario board refreshed: {scenario}");
+            Debug.Log(SolitaireDeckCommandLogic.DebugScenario.FormatAppliedLog(scenario));
         }
 
         public bool TryDrawOrRecycleStock()
@@ -104,20 +80,9 @@ namespace _Game.Scripts.Project.SolitaireModule.Controllers
             if (!_moveService.TryDrawOrRecycleStock(_context, _config, out SolitaireStockActionResult actionResult))
                 return false;
 
-            if (actionResult.WasRecycle)
-            {
-                _presentationHandler.HandleWasteRecycle();
-                WasteRecycled?.Invoke();
-                PublishScoreAction(SolitaireScoreAction.StockRecycle);
-            }
-            else
-            {
-                _presentationHandler.HandleStockDraw(actionResult.DrawnCardId);
-                StockDrawn?.Invoke(actionResult.DrawnCardId);
-                EventManager.SolitaireEvents.StockDrawClicked?.Invoke();
-                PublishScoreAction(SolitaireScoreAction.StockDraw);
-            }
-
+            SolitaireDeckCommandLogic.StockAction.ApplyPresentation(_presentationHandler, actionResult);
+            SolitaireDeckCommandLogic.Events.PublishScoreAction(
+                SolitaireDeckCommandLogic.Score.MapStockActionToScoreAction(actionResult.WasRecycle));
             PublishMoveCount();
             return true;
         }
@@ -128,13 +93,11 @@ namespace _Game.Scripts.Project.SolitaireModule.Controllers
 
             if (!_moveService.TryGetHint(_context.BoardState, _config, _hintCycleIndex, out SolitaireHint hint))
             {
-                HintShown?.Invoke(SolitaireHint.None);
                 EventManager.SolitaireEvents.HintShown?.Invoke(SolitaireHint.None);
                 return false;
             }
 
-            _hintCycleIndex++;
-            HintShown?.Invoke(hint);
+            _hintCycleIndex = SolitaireDeckCommandLogic.Hints.AdvanceCycleIndex(_hintCycleIndex);
             EventManager.SolitaireEvents.HintShown?.Invoke(hint);
             return true;
         }
@@ -143,49 +106,21 @@ namespace _Game.Scripts.Project.SolitaireModule.Controllers
         {
             EnsureInitialized();
 
-            int completedMoveCount = 0;
+            int completedMoveCount = SolitaireDeckCommandLogic.AutoComplete.ExecuteSequence(
+                SolitaireHintService.MaxAutoCompleteMoves,
+                TryGetNextAutoCompleteMove,
+                TryExecuteAutoCompleteMove);
 
-            for (int i = 0; i < SolitaireHintService.MaxAutoCompleteMoves; i++)
-            {
-                if (!_moveService.TryGetNextAutoCompleteMove(_context.BoardState, _config, out SolitaireHint hint))
-                    break;
-
-                if (!TryExecuteAutoCompleteMove(hint))
-                    break;
-
-                completedMoveCount++;
-            }
-
-            AutoCompleteCompleted?.Invoke(completedMoveCount);
             EventManager.SolitaireEvents.AutoCompleteCompleted?.Invoke(completedMoveCount);
             return completedMoveCount;
-        }
-
-        private bool TryExecuteAutoCompleteMove(SolitaireHint hint)
-        {
-            switch (hint.Kind)
-            {
-                case SolitaireHintKind.MoveToFoundation:
-                    return TryAutoMoveToFoundation(hint.Move.StartCardId);
-                case SolitaireHintKind.WasteToTableau:
-                case SolitaireHintKind.RevealTableauByMove:
-                case SolitaireHintKind.TableauToTableau:
-                    return TryMoveCardToSlot(hint.Move.StartCardId, hint.Move.Target);
-                default:
-                    return false;
-            }
         }
 
         public bool TryMoveCardToSlot(int cardId, PileRef target)
         {
             EnsureInitialized();
 
-            if (!_moveService.TryMoveCardToSlot(_context, _config, cardId, target, out SolitaireMove move, out SolitaireMoveResult result))
-                return false;
-
-            HandleAcceptedMove(move, result);
-            PublishMoveCount();
-            return true;
+            return _moveService.TryMoveCardToSlot(_context, _config, cardId, target, out SolitaireMove move, out SolitaireMoveResult result)
+                && CompleteAcceptedMove(move, result);
         }
 
         public bool CanMoveCardToSlot(int cardId, PileRef target)
@@ -204,24 +139,19 @@ namespace _Game.Scripts.Project.SolitaireModule.Controllers
         {
             EnsureInitialized();
 
-            if (!_moveService.TryAutoMoveToFoundation(_context, _config, cardId, out SolitaireMove move, out SolitaireMoveResult result))
-                return false;
-
-            HandleAcceptedMove(move, result);
-            PublishMoveCount();
-            return true;
+            return _moveService.TryAutoMoveToFoundation(_context, _config, cardId, out SolitaireMove move, out SolitaireMoveResult result)
+                && CompleteAcceptedMove(move, result);
         }
 
         public bool TryFlipTableauTop(int cardId)
         {
             EnsureInitialized();
 
-            if (!_moveService.TryFlipTableauTop(_context, _config, cardId, out SolitaireMove move, out SolitaireMoveResult result))
+            if (!_moveService.TryFlipTableauTop(_context, _config, cardId, out SolitaireMove move, out _))
                 return false;
 
             _presentationHandler.HandleFlipTableauTop(move.Source, cardId);
-            CardFlipped?.Invoke(cardId);
-            PublishScoreAction(SolitaireScoreAction.RevealTableauCard);
+            SolitaireDeckCommandLogic.Events.PublishRevealedTableauCard(cardId);
             PublishMoveCount();
             return true;
         }
@@ -233,19 +163,13 @@ namespace _Game.Scripts.Project.SolitaireModule.Controllers
             if (!_moveService.TryUndo(_context))
                 return false;
 
-            _hasAnnouncedWin = _gameFlowService.IsWon(_context.BoardState);
-            _context.SelectionState.Clear();
-            _presentationHandler.HandleUndo();
-            _gameFlowService.ResetFoundationTracking(_context.BoardState);
-            ResetHintCycle();
-            PublishScoreAction(SolitaireScoreAction.Undo);
-            PublishMoveCount();
+            ApplyUndoSessionRefresh();
             return true;
         }
 
         public void NotifyInvalidMove()
         {
-            InvalidMove?.Invoke();
+            EventManager.SolitaireEvents.InvalidMove?.Invoke();
             _presentationHandler.HandleInvalidMove();
         }
 
@@ -261,83 +185,99 @@ namespace _Game.Scripts.Project.SolitaireModule.Controllers
             return _moveService.CanCardReceiveInput(_context.BoardState, _config, cardId);
         }
 
+        private bool TryGetNextAutoCompleteMove(out SolitaireHint hint) =>
+            _moveService.TryGetNextAutoCompleteMove(_context.BoardState, _config, out hint);
+
+        private bool TryExecuteAutoCompleteMove(SolitaireHint hint) =>
+            SolitaireDeckCommandLogic.AutoComplete.ResolveExecution(hint.Kind) switch
+            {
+                SolitaireDeckCommandLogic.AutoCompleteExecutionKind.MoveToFoundation =>
+                    TryAutoMoveToFoundation(hint.Move.StartCardId),
+                SolitaireDeckCommandLogic.AutoCompleteExecutionKind.MoveToSlot =>
+                    TryMoveCardToSlot(hint.Move.StartCardId, hint.Move.Target),
+                _ => false
+            };
+
+        private bool CompleteAcceptedMove(SolitaireMove move, SolitaireMoveResult result)
+        {
+            HandleAcceptedMove(move, result);
+            PublishMoveCount();
+            return true;
+        }
+
         private void HandleAcceptedMove(SolitaireMove move, SolitaireMoveResult result)
         {
             _presentationHandler.HandleAcceptedMove(move, result);
             ResetHintCycle();
-            PublishScoreAction(GetScoreAction(move.Type));
-
-            if (result.RevealedCardId >= 0)
-            {
-                CardFlipped?.Invoke(result.RevealedCardId);
-                PublishScoreAction(SolitaireScoreAction.RevealTableauCard);
-            }
-
+            SolitaireDeckCommandLogic.Events.PublishAcceptedMoveScoreActions(move, result);
             PublishFoundationProgress();
-            MoveCompleted?.Invoke(move);
+            EventManager.SolitaireEvents.MoveCompleted?.Invoke(move);
             TryAnnounceWin();
+        }
+
+        private void ApplyUndoSessionRefresh()
+        {
+            _hasAnnouncedWin = _gameFlowService.IsWon(_context.BoardState);
+            _context.SelectionState.Clear();
+            _presentationHandler.HandleUndo();
+            _gameFlowService.ResetFoundationTracking(_context.BoardState);
+            ResetHintCycle();
+            SolitaireDeckCommandLogic.Events.PublishScoreAction(SolitaireScoreAction.Undo);
+            PublishMoveCount();
+        }
+
+        private void ResetSessionForNewBoard()
+        {
+            _hasAnnouncedWin = false;
+            ResetHintCycle();
+            _context.SelectionState.Clear();
+        }
+
+        private void EndActiveDragIfNeeded()
+        {
+            if (!SolitaireDeckCommandLogic.Runtime.ShouldEndActiveDrag(_context))
+                return;
+
+            _context.EndDrag();
         }
 
         private void OnDealAnimationCompleted()
         {
-            DealCompleted?.Invoke();
-        }
-
-        private void PublishDealStarted()
-        {
-            DealStarted?.Invoke();
-            EventManager.SolitaireEvents.DealStarted?.Invoke();
-        }
-
-        private static SolitaireScoreAction GetScoreAction(SolitaireMoveType moveType)
-        {
-            return moveType switch
-            {
-                SolitaireMoveType.WasteToFoundation => SolitaireScoreAction.MoveToFoundation,
-                SolitaireMoveType.TableauToFoundation => SolitaireScoreAction.MoveToFoundation,
-                SolitaireMoveType.AutoMoveToFoundation => SolitaireScoreAction.MoveToFoundation,
-                _ => SolitaireScoreAction.MoveToTableau
-            };
-        }
-
-        private static void PublishScoreAction(SolitaireScoreAction action)
-        {
-            EventManager.SolitaireEvents.ScoreActionPerformed?.Invoke(action);
+            EventManager.SolitaireEvents.DealCompleted?.Invoke();
         }
 
         private void ResetHintCycle()
         {
-            _hintCycleIndex = 0;
+            _hintCycleIndex = SolitaireDeckCommandLogic.Hints.ResetCycleIndex();
         }
 
         private void TryAnnounceWin()
         {
-            if (_hasAnnouncedWin || !_gameFlowService.IsWon(_context.BoardState))
+            if (!SolitaireDeckCommandLogic.Win.ShouldAnnounce(_hasAnnouncedWin, _gameFlowService.IsWon(_context.BoardState)))
                 return;
 
             _hasAnnouncedWin = true;
             _presentationHandler.PlayWinCelebration();
-            GameWon?.Invoke();
+            EventManager.SolitaireEvents.GameWon?.Invoke();
         }
 
         private void PublishFoundationProgress()
         {
             FoundationProgressDelta[] changes = _gameFlowService.CollectFoundationProgressChanges(_context.BoardState);
-
-            for (int i = 0; i < changes.Length; i++)
-                FoundationProgressChanged?.Invoke(changes[i].FoundationIndex, changes[i].CardCount);
+            SolitaireDeckCommandLogic.FoundationProgress.PublishChanges(changes);
         }
 
         private void EnsureInitialized()
         {
-            if (_config == null || _context == null || _moveService == null || _presentationHandler == null)
-                throw new InvalidOperationException($"{nameof(SolitaireDeckController)} is not initialized.");
+            if (SolitaireDeckCommandLogic.Runtime.IsReady(_config, _context, _moveService, _presentationHandler))
+                return;
+
+            throw new InvalidOperationException($"{nameof(SolitaireDeckController)} is not initialized.");
         }
 
         private void PublishMoveCount()
         {
-            MoveCountChanged?.Invoke(CurrentMoveCount);
-            UndoAvailabilityChanged?.Invoke(CanUndo);
+            SolitaireDeckCommandLogic.Events.PublishMoveCount(CurrentMoveCount, CanUndo);
         }
     }
 }

@@ -68,8 +68,10 @@ namespace _Game.Scripts.Project.SolitaireModule.Controllers
 
         private void HandleDealStarted()
         {
-            if (_context != null)
-                SolitaireCardSelectionVisuals.ClearAll(_context);
+            if (_context == null)
+                return;
+
+            SolitaireCardSelectionVisuals.ClearAll(_context);
         }
 
         private void HandleDragLayerReady(Transform dragLayer)
@@ -79,7 +81,7 @@ namespace _Game.Scripts.Project.SolitaireModule.Controllers
 
         private void Update()
         {
-            if (_config == null || _context == null || _context.IsAnimationLocked)
+            if (!SolitaireInputLogic.CanProcessPointerInput(_config, _context))
                 return;
 
             if (!_pointerInputSource.TryGetPointer(out Vector3 pointerWorld, out SolitairePointerPhase phase))
@@ -90,14 +92,14 @@ namespace _Game.Scripts.Project.SolitaireModule.Controllers
 
         private void LateUpdate()
         {
-            if (_context == null || _pointerInputSource == null || !_context.IsDragging)
+            if (!SolitaireInputLogic.CanUpdateDragPresentation(_context, _pointerInputSource != null))
                 return;
 
-            if (_pointerInputSource.TryGetPointer(out Vector3 pointerWorld, out _))
-            {
-                _dragPresenter.MoveDraggedCards(pointerWorld);
-                UpdateDragTargetHighlight(pointerWorld);
-            }
+            if (!_pointerInputSource.TryGetPointer(out Vector3 pointerWorld, out _))
+                return;
+
+            _dragPresenter.MoveDraggedCards(pointerWorld);
+            UpdateDragTargetHighlight(pointerWorld);
         }
 
         private void BindPointerHandlers()
@@ -122,16 +124,24 @@ namespace _Game.Scripts.Project.SolitaireModule.Controllers
 
         private void HandlePointerDown(Vector3 pointerWorld)
         {
+            BeginPointerDown(pointerWorld);
+            DispatchPointerPress(pointerWorld);
+        }
+
+        private void BeginPointerDown(Vector3 pointerWorld)
+        {
             _isPointerDown = true;
             _pointerDownWorld = pointerWorld;
             _pressedCardId = -1;
+        }
 
+        private void DispatchPointerPress(Vector3 pointerWorld)
+        {
             CardInputReceiver card = _hitTester.GetCardUnderPointer(pointerWorld, _moveQueries);
 
             if (card != null)
             {
-                CardState state = _context.BoardState.GetCard(card.Identity.CardId);
-                _cardPressHandlers[(int)state.CurrentPileType]?.Invoke(card);
+                DispatchCardPress(card);
                 return;
             }
 
@@ -140,6 +150,17 @@ namespace _Game.Scripts.Project.SolitaireModule.Controllers
             if (slot == null)
                 return;
 
+            DispatchSlotPress(slot);
+        }
+
+        private void DispatchCardPress(CardInputReceiver card)
+        {
+            CardState state = _context.BoardState.GetCard(card.Identity.CardId);
+            _cardPressHandlers[(int)state.CurrentPileType]?.Invoke(card);
+        }
+
+        private void DispatchSlotPress(SolitaireSlotAnchor slot)
+        {
             _slotPressHandlers[(int)slot.PileType]?.Invoke(slot);
         }
 
@@ -147,17 +168,22 @@ namespace _Game.Scripts.Project.SolitaireModule.Controllers
         {
             _pressedCardId = card.Identity.CardId;
             CardState state = _context.BoardState.GetCard(_pressedCardId);
-
-            if (state.CurrentPileType == SolitairePileType.Waste)
-                EventManager.SolitaireEvents.WasteCardClicked?.Invoke();
-
+            RaiseWasteCardClickedIfNeeded(state.CurrentPileType);
             card.View.PlayPressedFeedback();
             _hapticFeedbackProvider.PlayLight();
         }
 
+        private void RaiseWasteCardClickedIfNeeded(SolitairePileType pileType)
+        {
+            if (!SolitaireInputLogic.ShouldInvokeWasteCardClicked(pileType))
+                return;
+
+            EventManager.SolitaireEvents.WasteCardClicked?.Invoke();
+        }
+
         private void HandleSelectableSlotPress(SolitaireSlotAnchor slot)
         {
-            if (slot == null || !_config.EnableTapSelection)
+            if (!SolitaireInputLogic.CanProcessSelectableSlotTap(_config.EnableTapSelection))
                 return;
 
             TryMoveSelectionToSlot(slot.PileRef);
@@ -165,31 +191,35 @@ namespace _Game.Scripts.Project.SolitaireModule.Controllers
 
         private void HandlePointerHold(Vector3 pointerWorld)
         {
-            bool canBeginDrag = _isPointerDown &&
-                                !_context.IsDragging &&
-                                _pressedCardId >= 0 &&
-                                Vector2.Distance(pointerWorld, _pointerDownWorld) >= _config.DragStartThresholdWorld &&
-                                _moveQueries.CanStartDrag(_pressedCardId);
-
-            if (!canBeginDrag)
+            if (!CanBeginDrag(pointerWorld))
                 return;
 
             BeginDrag(pointerWorld);
         }
 
+        private bool CanBeginDrag(Vector3 pointerWorld) =>
+            SolitaireInputLogic.CanBeginDrag(
+                _isPointerDown,
+                _context.IsDragging,
+                _pressedCardId,
+                pointerWorld,
+                _pointerDownWorld,
+                _config.DragStartThresholdWorld,
+                _moveQueries.CanStartDrag(_pressedCardId));
+
         private void HandlePointerUp(Vector3 pointerWorld)
         {
-            if (!_isPointerDown)
+            if (!SolitaireInputLogic.IsActivePointer(_isPointerDown))
                 return;
 
-            if (_context.IsDragging)
+            if (SolitaireInputLogic.ShouldEndDragOnPointerUp(_context.IsDragging))
             {
                 EndDrag(pointerWorld);
                 ResetPointerState();
                 return;
             }
 
-            if (_pressedCardId >= 0)
+            if (SolitaireInputLogic.HasPressedCard(_pressedCardId))
                 HandleTap(_pressedCardId);
 
             ResetPointerState();
@@ -205,27 +235,37 @@ namespace _Game.Scripts.Project.SolitaireModule.Controllers
 
         private void EndDrag(Vector3 pointerWorld)
         {
-            bool hasTarget = TryGetDropTargetUnderPointer(pointerWorld, out PileRef target);
-            bool moved = hasTarget &&
-                         _moveQueries.CanMoveCardToSlot(_pressedCardId, target) &&
-                         _moveCommands.TryMoveCardToSlot(_pressedCardId, target);
-
-            if (moved)
-            {
-                EventManager.SolitaireEvents.CardDropSucceeded?.Invoke();
-                _context.SelectionState.Clear();
-            }
+            if (TryExecuteDrop(pointerWorld))
+                HandleDropSucceeded();
             else
-            {
-                EventManager.SolitaireEvents.CardDropFailed?.Invoke();
-                CardView pressed = _context.ViewRegistry.GetCard(_pressedCardId);
-                pressed.ResetFeedback();
-                pressed.PlayInvalidFeedback(_config.InvalidMoveReturnDuration);
-                _moveCommands.ReturnCardToCurrentPile(_pressedCardId);
-                _moveCommands.NotifyInvalidMove();
-            }
+                HandleDropFailed();
 
             _dragPresenter.FinishDrag();
+        }
+
+        private bool TryExecuteDrop(Vector3 pointerWorld)
+        {
+            bool hasTarget = TryGetDropTargetUnderPointer(pointerWorld, out PileRef target);
+            bool canMove = _moveQueries.CanMoveCardToSlot(_pressedCardId, target);
+
+            return SolitaireInputLogic.CanEvaluateDrop(hasTarget, canMove) &&
+                   _moveCommands.TryMoveCardToSlot(_pressedCardId, target);
+        }
+
+        private void HandleDropSucceeded()
+        {
+            EventManager.SolitaireEvents.CardDropSucceeded?.Invoke();
+            _context.SelectionState.Clear();
+        }
+
+        private void HandleDropFailed()
+        {
+            EventManager.SolitaireEvents.CardDropFailed?.Invoke();
+            CardView pressed = _context.ViewRegistry.GetCard(_pressedCardId);
+            pressed.ResetFeedback();
+            pressed.PlayInvalidFeedback(_config.InvalidMoveReturnDuration);
+            _moveCommands.ReturnCardToCurrentPile(_pressedCardId);
+            _moveCommands.NotifyInvalidMove();
         }
 
         private void HandleTap(int cardId)
@@ -233,36 +273,63 @@ namespace _Game.Scripts.Project.SolitaireModule.Controllers
             CardView card = _context.ViewRegistry.GetCard(cardId);
             card.ResetFeedback();
 
-            bool isDoubleTap = cardId == _lastTapCardId && Time.time - _lastTapTime <= _config.DoubleTapThreshold;
+            bool isDoubleTap = RecordTapTiming(cardId);
+
+            if (TryHandleDoubleTapFoundation(cardId, card, isDoubleTap))
+                return;
+
+            if (TryHandleTableauFlip(cardId))
+                return;
+
+            if (!TryHandleTapSelection(cardId))
+                card.ResetFeedback();
+        }
+
+        private bool RecordTapTiming(int cardId)
+        {
+            bool isDoubleTap = SolitaireInputLogic.IsDoubleTap(
+                cardId,
+                _lastTapCardId,
+                _lastTapTime,
+                Time.time,
+                _config.DoubleTapThreshold);
+
             _lastTapTime = Time.time;
             _lastTapCardId = cardId;
+            return isDoubleTap;
+        }
 
-            if (isDoubleTap && _config.DoubleTapMovesToFoundationOnly)
-            {
-                bool moved = _moveCommands.TryAutoMoveToFoundation(cardId);
-                _context.SelectionState.Clear();
+        private bool TryHandleDoubleTapFoundation(int cardId, CardView card, bool isDoubleTap)
+        {
+            if (!SolitaireInputLogic.ShouldAutoMoveToFoundation(isDoubleTap, _config.DoubleTapMovesToFoundationOnly))
+                return false;
 
-                if (!moved)
-                {
-                    card.PlayInvalidFeedback(_config.InvalidMoveReturnDuration);
-                    _moveCommands.NotifyInvalidMove();
-                }
+            bool moved = _moveCommands.TryAutoMoveToFoundation(cardId);
+            _context.SelectionState.Clear();
 
-                return;
-            }
+            if (moved)
+                return true;
 
-            bool flipped = _moveCommands.TryFlipTableauTop(cardId);
+            card.PlayInvalidFeedback(_config.InvalidMoveReturnDuration);
+            _moveCommands.NotifyInvalidMove();
+            return true;
+        }
 
-            if (flipped)
-            {
-                _context.SelectionState.Clear();
-                return;
-            }
+        private bool TryHandleTableauFlip(int cardId)
+        {
+            if (!_moveCommands.TryFlipTableauTop(cardId))
+                return false;
 
-            bool selected = _config.EnableTapSelection && HandleTapSelection(cardId);
+            _context.SelectionState.Clear();
+            return true;
+        }
 
-            if (!selected)
-                card.ResetFeedback();
+        private bool TryHandleTapSelection(int cardId)
+        {
+            if (!SolitaireInputLogic.CanUseTapSelection(_config.EnableTapSelection))
+                return false;
+
+            return HandleTapSelection(cardId);
         }
 
         private bool TryGetDropTargetUnderPointer(Vector3 pointerWorld, out PileRef target)
@@ -278,24 +345,34 @@ namespace _Game.Scripts.Project.SolitaireModule.Controllers
 
         private void UpdateDragTargetHighlight(Vector3 pointerWorld)
         {
-            PileRef highlightTarget = _pressedCardId < 0
-                ? PileRef.Invalid
-                : TryGetDropTargetUnderPointer(pointerWorld, out PileRef target) ? target : PileRef.Invalid;
-
+            bool hasTarget = TryGetDropTargetUnderPointer(pointerWorld, out PileRef target);
+            PileRef highlightTarget = SolitaireInputLogic.ResolveDragHighlightTarget(_pressedCardId, hasTarget, target);
             _dragPresenter.UpdateTargetHighlight(highlightTarget);
         }
 
         private bool HandleTapSelection(int cardId)
         {
-            if (_context.SelectionState.HasSelection && _context.SelectionState.SelectedCardId != cardId)
-            {
-                CardState targetState = _context.BoardState.GetCard(cardId);
+            if (TryMoveSelectionToTappedCard(cardId))
+                return true;
 
-                if (TryMoveSelectionToSlot(new PileRef(targetState.CurrentPileType, targetState.CurrentPileIndex)))
-                    return true;
-            }
+            return TrySelectCard(cardId);
+        }
 
-            if (!_moveQueries.CanStartDrag(cardId))
+        private bool TryMoveSelectionToTappedCard(int cardId)
+        {
+            if (!SolitaireInputLogic.ShouldTryMoveSelectionToTappedCard(
+                    _context.SelectionState.HasSelection,
+                    _context.SelectionState.SelectedCardId,
+                    cardId))
+                return false;
+
+            CardState targetState = _context.BoardState.GetCard(cardId);
+            return TryMoveSelectionToSlot(SolitaireInputLogic.CreatePileRefFromCardState(targetState));
+        }
+
+        private bool TrySelectCard(int cardId)
+        {
+            if (!SolitaireInputLogic.CanSelectCardOnTap(_moveQueries.CanStartDrag(cardId)))
             {
                 _context.SelectionState.Clear();
                 return false;
@@ -321,7 +398,7 @@ namespace _Game.Scripts.Project.SolitaireModule.Controllers
 
         private void ResetPointerState()
         {
-            if (_pressedCardId >= 0)
+            if (SolitaireInputLogic.ShouldResetPressedCardFeedback(_pressedCardId))
                 _context.ViewRegistry.GetCard(_pressedCardId).ResetFeedback();
 
             _dragPresenter.ClearDropTargetHighlights();

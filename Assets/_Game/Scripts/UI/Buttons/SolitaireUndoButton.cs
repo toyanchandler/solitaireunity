@@ -11,8 +11,6 @@ namespace _Game.Scripts.UI.Buttons
         [SerializeField] private SolitaireDeckController deckController;
         [SerializeField] private Graphic[] disabledVisuals;
 
-        private bool _isSubscribed;
-
         protected override void Awake()
         {
             base.Awake();
@@ -22,21 +20,22 @@ namespace _Game.Scripts.UI.Buttons
         {
             EventManager.InGameEvents.LevelStart += HandleLevelStart;
             EventManager.SolitaireEvents.ControllerHostReady += HandleControllerHostReady;
+            EventManager.SolitaireEvents.UndoAvailabilityChanged += RefreshAvailability;
             TryResolveDeckController();
-            SubscribeIfReady();
+            RefreshAvailability(deckController != null && deckController.CanUndo);
         }
 
         private void Start()
         {
             TryResolveDeckController();
-            SubscribeIfReady();
+            RefreshAvailability(deckController != null && deckController.CanUndo);
         }
 
         private void OnDisable()
         {
             EventManager.InGameEvents.LevelStart -= HandleLevelStart;
             EventManager.SolitaireEvents.ControllerHostReady -= HandleControllerHostReady;
-            Unsubscribe();
+            EventManager.SolitaireEvents.UndoAvailabilityChanged -= RefreshAvailability;
         }
 
         protected override void OnClicked()
@@ -52,7 +51,7 @@ namespace _Game.Scripts.UI.Buttons
         private void HandleLevelStart()
         {
             TryResolveDeckController();
-            SubscribeIfReady();
+            RefreshAvailability(deckController != null && deckController.CanUndo);
         }
 
         private void HandleControllerHostReady(SolitaireModuleControllerBundle bundle)
@@ -61,7 +60,7 @@ namespace _Game.Scripts.UI.Buttons
                 return;
 
             deckController = bundle.DeckController;
-            SubscribeIfReady();
+            RefreshAvailability(deckController.CanUndo);
         }
 
         private void TryResolveDeckController()
@@ -71,31 +70,6 @@ namespace _Game.Scripts.UI.Buttons
 
             if (SolitaireFeatureRegistration.TryGetControllerHost(out SolitaireModuleControllerBundle bundle, out _))
                 deckController = bundle.DeckController;
-        }
-
-        private void SubscribeIfReady()
-        {
-            if (deckController == null)
-            {
-                RefreshAvailability(false);
-                return;
-            }
-
-            if (_isSubscribed)
-                return;
-
-            deckController.UndoAvailabilityChanged += RefreshAvailability;
-            _isSubscribed = true;
-            RefreshAvailability(deckController.CanUndo);
-        }
-
-        private void Unsubscribe()
-        {
-            if (!_isSubscribed || deckController == null)
-                return;
-
-            deckController.UndoAvailabilityChanged -= RefreshAvailability;
-            _isSubscribed = false;
         }
 
         private void RefreshAvailability(bool canUndo)

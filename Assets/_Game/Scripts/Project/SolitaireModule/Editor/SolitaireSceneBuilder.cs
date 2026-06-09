@@ -47,6 +47,14 @@ namespace _Game.Scripts.Project.SolitaireModule.Editor
         private const float TableauBottomPlayableY = -3.85f;
         private const float WasteStackXOffset = 0.09f;
         private const float DropSnapDistance = 0.30f;
+        private const float DragProbeTopOffsetRatio = 0.72f;
+        private const float DragProbeHorizontalOffsetRatio = 0.35f;
+        private const float DragProbeCornerYOffsetRatio = 0.58f;
+        private const float FoundationDropHalfWidthRatio = 0.95f;
+        private const float FoundationDropHalfHeightRatio = 0.85f;
+        private const float TableauColumnHalfWidthRatio = 0.62f;
+        private const float TableauColumnTopPaddingRatio = 1.25f;
+        private const float TableauColumnBottomPaddingRatio = 0.25f;
         private static readonly Color SlotMarkerColor = new Color(0.74f, 0.98f, 0.82f, 0.62f);
 
         [MenuItem("Tools/Solitaire/Repair Main Scene")]
@@ -942,6 +950,14 @@ namespace _Game.Scripts.Project.SolitaireModule.Editor
             SetFloat(config, "tableauBottomPlayableY", TableauBottomPlayableY);
             SetFloat(config, "wasteStackXOffset", WasteStackXOffset);
             SetFloat(config, "dropSnapDistance", DropSnapDistance);
+            SetFloat(config, "dragProbeTopOffsetRatio", DragProbeTopOffsetRatio);
+            SetFloat(config, "dragProbeHorizontalOffsetRatio", DragProbeHorizontalOffsetRatio);
+            SetFloat(config, "dragProbeCornerYOffsetRatio", DragProbeCornerYOffsetRatio);
+            SetFloat(config, "foundationDropHalfWidthRatio", FoundationDropHalfWidthRatio);
+            SetFloat(config, "foundationDropHalfHeightRatio", FoundationDropHalfHeightRatio);
+            SetFloat(config, "tableauColumnHalfWidthRatio", TableauColumnHalfWidthRatio);
+            SetFloat(config, "tableauColumnTopPaddingRatio", TableauColumnTopPaddingRatio);
+            SetFloat(config, "tableauColumnBottomPaddingRatio", TableauColumnBottomPaddingRatio);
             return config;
         }
 

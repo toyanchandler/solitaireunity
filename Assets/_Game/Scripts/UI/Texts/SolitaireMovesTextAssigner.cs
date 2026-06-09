@@ -1,4 +1,4 @@
-using _Game.Scripts.Project.SolitaireModule.Controllers;
+using _Game.Scripts.Managers.Core;
 using TMPro;
 using UnityEngine;
 
@@ -8,7 +8,6 @@ namespace _Game.Scripts.UI.Texts
     public sealed class SolitaireMovesTextAssigner : MonoBehaviour
     {
         [SerializeField] private TextMeshProUGUI textMesh;
-        [SerializeField] private SolitaireDeckController deckController;
         [SerializeField] private string prefix = "MOVES ";
 
         private void Awake()
@@ -19,21 +18,20 @@ namespace _Game.Scripts.UI.Texts
 
         private void OnEnable()
         {
-            if (deckController == null)
-            {
-                Debug.LogWarning($"{nameof(SolitaireMovesTextAssigner)} on {name} is missing {nameof(SolitaireDeckController)}.", this);
-                Render(0);
-                return;
-            }
-
-            deckController.MoveCountChanged += Render;
-            Render(deckController.CurrentMoveCount);
+            EventManager.SolitaireEvents.MoveCountChanged += Render;
+            EventManager.SolitaireEvents.DealStarted += HandleDealStarted;
+            Render(0);
         }
 
         private void OnDisable()
         {
-            if (deckController != null)
-                deckController.MoveCountChanged -= Render;
+            EventManager.SolitaireEvents.MoveCountChanged -= Render;
+            EventManager.SolitaireEvents.DealStarted -= HandleDealStarted;
+        }
+
+        private void HandleDealStarted()
+        {
+            Render(0);
         }
 
         private void Render(int moveCount)

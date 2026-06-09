@@ -65,9 +65,11 @@ namespace _Game.Scripts.Project.SolitaireModule.Input
             Vector2 cardSize = _context.LayoutMetrics.CardSize;
             float halfWidth = cardSize.x * 0.5f;
             float halfHeight = cardSize.y * 0.5f;
-            _dropProbePoints[1] = center + new Vector3(0f, halfHeight * 0.72f, 0f);
-            _dropProbePoints[2] = center + new Vector3(-halfWidth * 0.35f, halfHeight * 0.58f, 0f);
-            _dropProbePoints[3] = center + new Vector3(halfWidth * 0.35f, halfHeight * 0.58f, 0f);
+            float horizontalOffset = _config.DragProbeHorizontalOffsetRatio;
+            float cornerYOffset = _config.DragProbeCornerYOffsetRatio;
+            _dropProbePoints[1] = center + new Vector3(0f, halfHeight * _config.DragProbeTopOffsetRatio, 0f);
+            _dropProbePoints[2] = center + new Vector3(-halfWidth * horizontalOffset, halfHeight * cornerYOffset, 0f);
+            _dropProbePoints[3] = center + new Vector3(halfWidth * horizontalOffset, halfHeight * cornerYOffset, 0f);
             _dropProbePoints[4] = center;
             return _dropProbePoints.Length;
         }
@@ -113,8 +115,8 @@ namespace _Game.Scripts.Project.SolitaireModule.Input
         {
             SolitaireSlotAnchor[] foundations = _context.ViewRegistry.Foundations;
             Vector2 cardSize = _context.LayoutMetrics.CardSize;
-            float halfWidth = cardSize.x * 0.95f;
-            float halfHeight = cardSize.y * 0.85f;
+            float halfWidth = cardSize.x * _config.FoundationDropHalfWidthRatio;
+            float halfHeight = cardSize.y * _config.FoundationDropHalfHeightRatio;
             SolitaireSlotAnchor bestSlot = null;
             float bestDistance = float.MaxValue;
 
@@ -171,9 +173,10 @@ namespace _Game.Scripts.Project.SolitaireModule.Input
         {
             SolitaireSlotAnchor[] tableaus = _context.ViewRegistry.Tableaus;
             Vector2 cardSize = _context.LayoutMetrics.CardSize;
-            float halfWidth = cardSize.x * 0.62f;
-            float topPadding = cardSize.y * 1.25f;
-            float bottomY = _context.LayoutMetrics.TableauBottomPlayableY - cardSize.y * 0.25f;
+            float halfWidth = cardSize.x * _config.TableauColumnHalfWidthRatio;
+            float topPadding = cardSize.y * _config.TableauColumnTopPaddingRatio;
+            float bottomY = _context.LayoutMetrics.TableauBottomPlayableY -
+                            cardSize.y * _config.TableauColumnBottomPaddingRatio;
             SolitaireSlotAnchor bestSlot = null;
             float bestDistance = float.MaxValue;
 

@@ -12,6 +12,10 @@ The pattern follows project hierarchy rules:
 
 `SolitaireModuleInstaller`, `SolitaireModuleSceneBindings`, and runtime `GetComponentsInChildren` autodiscovery are **removed**. Use this document instead.
 
+For how large Solitaire scripts were split into `*Logic` partials (`CardViewLogic`, `SolitaireHintLogic`, `SolitaireBoardLayoutCalculator`), see [HOW_TO_REFACTOR_WITH_LOGIC_PARTIALS.md](../02_How_To/HOW_TO_REFACTOR_WITH_LOGIC_PARTIALS.md).
+
+For physical script folders (`Bootstrap/`, `Board/`, `Hints/`, `Views/Card/`, etc.), see [SOLITAIRE_MODULE_FOLDER_STRUCTURE.md](./SOLITAIRE_MODULE_FOLDER_STRUCTURE.md).
+
 ---
 
 ## Prefab hierarchy
@@ -256,11 +260,11 @@ Before play mode or build:
 
 | Role | Path |
 |------|------|
-| Composition root | `Assets/_Game/Scripts/Project/SolitaireModule/Runtime/SolitaireModuleBootstrap.cs` |
-| Registration hub | `Assets/_Game/Scripts/Project/SolitaireModule/Runtime/SolitaireFeatureRegistration.cs` |
-| Controller bundle | `Assets/_Game/Scripts/Project/SolitaireModule/Runtime/SolitaireModuleControllerBundle.cs` |
-| Controller host | `Assets/_Game/Scripts/Project/SolitaireModule/Runtime/SolitaireModuleControllerHost.cs` |
-| Runtime init | `Assets/_Game/Scripts/Project/SolitaireModule/Runtime/SolitaireModuleRuntimeBootstrap.cs` |
+| Composition root | `Assets/_Game/Scripts/Project/SolitaireModule/Bootstrap/SolitaireModuleBootstrap.cs` |
+| Registration hub | `Assets/_Game/Scripts/Project/SolitaireModule/Bootstrap/SolitaireFeatureRegistration.cs` |
+| Controller bundle | `Assets/_Game/Scripts/Project/SolitaireModule/Bootstrap/SolitaireModuleControllerBundle.cs` |
+| Controller host | `Assets/_Game/Scripts/Project/SolitaireModule/Bootstrap/SolitaireModuleControllerHost.cs` |
+| Runtime init | `Assets/_Game/Scripts/Project/SolitaireModule/Bootstrap/SolitaireModuleRuntimeBootstrap.cs` |
 | Solitaire events | `Assets/_Game/Scripts/Managers/Core/EventManagers/EventManager.Solitaire.cs` |
 | Scene builder | `Assets/_Game/Scripts/Project/SolitaireModule/Editor/SolitaireSceneBuilder.cs` |
 | Prefab | `Assets/_Game/Prefabs/_InGame/Solitaire/SolitaireRoot.prefab` |

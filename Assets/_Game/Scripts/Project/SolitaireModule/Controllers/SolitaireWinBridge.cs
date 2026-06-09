@@ -5,42 +5,19 @@ namespace _Game.Scripts.Project.SolitaireModule.Controllers
 {
     public sealed class SolitaireWinBridge : MonoBehaviour
     {
-        [SerializeField] private SolitaireDeckController deckController;
-
-        public void Initialize(SolitaireDeckController controller)
+        private void OnEnable()
         {
-            Unsubscribe();
-            deckController = controller;
-            Subscribe();
+            EventManager.SolitaireEvents.GameWon += HandleGameWon;
         }
 
         private void OnDisable()
         {
-            Unsubscribe();
-        }
-
-        private void Subscribe()
-        {
-            if (deckController != null)
-                deckController.GameWon += HandleGameWon;
-        }
-
-        private void Unsubscribe()
-        {
-            if (deckController != null)
-                deckController.GameWon -= HandleGameWon;
+            EventManager.SolitaireEvents.GameWon -= HandleGameWon;
         }
 
         private void HandleGameWon()
         {
             EventManager.InGameEvents.LevelSuccess?.Invoke();
         }
-
-#if UNITY_EDITOR
-        private void OnValidate()
-        {
-            deckController ??= GetComponent<SolitaireDeckController>();
-        }
-#endif
     }
 }

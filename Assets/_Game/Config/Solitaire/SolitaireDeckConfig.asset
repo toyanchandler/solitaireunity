@@ -35,6 +35,14 @@ MonoBehaviour:
   dragStartThresholdWorld: 0.08
   dropSnapDistance: 0.3
   enableTapSelection: 0
+  dragProbeTopOffsetRatio: 0.72
+  dragProbeHorizontalOffsetRatio: 0.35
+  dragProbeCornerYOffsetRatio: 0.58
+  foundationDropHalfWidthRatio: 0.95
+  foundationDropHalfHeightRatio: 0.85
+  tableauColumnHalfWidthRatio: 0.62
+  tableauColumnTopPaddingRatio: 1.25
+  tableauColumnBottomPaddingRatio: 0.25
   moveAnimationDuration: 0.16
   invalidMoveReturnDuration: 0.12
   flipAnimationDuration: 0.15
@@ -45,7 +53,7 @@ MonoBehaviour:
   flipTiltDegrees: 9
   baseSortingOrder: 100
   dragSortingOrder: 5000
-  validTargetHighlightColor: {r: 1, g: 1, b: 1 a: 1}
+  validTargetHighlightColor: {r: 1, g: 1, b: 0.55, a: 0.68}
   dragLiftScale: 1.06
   dragAlpha: 0.94
   dragShadowOffset: {x: 0.04, y: -0.05}
@@ -61,4 +69,5 @@ MonoBehaviour:
   autoFlipTableauTopCard: 1
   doubleTapMovesToFoundationOnly: 1
   allowWasteRecycle: 1
+  useFixedDealSeed: 0
   dealSeed: 104729

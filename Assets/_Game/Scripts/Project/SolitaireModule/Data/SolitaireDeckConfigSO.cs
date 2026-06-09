@@ -39,6 +39,16 @@ namespace _Game.Scripts.Project.SolitaireModule.Data
         [SerializeField] private float dropSnapDistance = 0.30f;
         [SerializeField] private bool enableTapSelection;
 
+        [Header("Drop Target")]
+        [SerializeField] private float dragProbeTopOffsetRatio = 0.72f;
+        [SerializeField] private float dragProbeHorizontalOffsetRatio = 0.35f;
+        [SerializeField] private float dragProbeCornerYOffsetRatio = 0.58f;
+        [SerializeField] private float foundationDropHalfWidthRatio = 0.95f;
+        [SerializeField] private float foundationDropHalfHeightRatio = 0.85f;
+        [SerializeField] private float tableauColumnHalfWidthRatio = 0.62f;
+        [SerializeField] private float tableauColumnTopPaddingRatio = 1.25f;
+        [SerializeField] private float tableauColumnBottomPaddingRatio = 0.25f;
+
         [Header("Animation")]
         [SerializeField] private float moveAnimationDuration = 0.16f;
         [SerializeField] private float invalidMoveReturnDuration = 0.12f;
@@ -94,6 +104,14 @@ namespace _Game.Scripts.Project.SolitaireModule.Data
         public float DragStartThresholdWorld => Mathf.Max(0.01f, dragStartThresholdWorld);
         public float DropSnapDistance => Mathf.Max(0.01f, dropSnapDistance);
         public bool EnableTapSelection => enableTapSelection;
+        public float DragProbeTopOffsetRatio => Mathf.Clamp01(dragProbeTopOffsetRatio);
+        public float DragProbeHorizontalOffsetRatio => Mathf.Clamp01(dragProbeHorizontalOffsetRatio);
+        public float DragProbeCornerYOffsetRatio => Mathf.Clamp01(dragProbeCornerYOffsetRatio);
+        public float FoundationDropHalfWidthRatio => Mathf.Clamp(foundationDropHalfWidthRatio, 0.1f, 2f);
+        public float FoundationDropHalfHeightRatio => Mathf.Clamp(foundationDropHalfHeightRatio, 0.1f, 2f);
+        public float TableauColumnHalfWidthRatio => Mathf.Clamp(tableauColumnHalfWidthRatio, 0.1f, 2f);
+        public float TableauColumnTopPaddingRatio => Mathf.Clamp(tableauColumnTopPaddingRatio, 0.1f, 3f);
+        public float TableauColumnBottomPaddingRatio => Mathf.Clamp(tableauColumnBottomPaddingRatio, 0f, 2f);
         public float MoveAnimationDuration => Mathf.Max(0.01f, moveAnimationDuration);
         public float InvalidMoveReturnDuration => Mathf.Max(0.01f, invalidMoveReturnDuration);
         public float FlipAnimationDuration => Mathf.Clamp(flipAnimationDuration, 0.08f, 0.35f);

@@ -108,3 +108,11 @@ internal static class PlayerAnimationController
 ```
 
 This is not a helper. It is hidden global state and scene search.
+
+## Large file split pattern
+
+When a `*Logic` class or static calculator grows past ~200 lines, split it with C# `partial` files and keep the host thin.
+
+Worked examples (CardView, hint engine, board layout):
+
+- [HOW_TO_REFACTOR_WITH_LOGIC_PARTIALS.md](../02_How_To/HOW_TO_REFACTOR_WITH_LOGIC_PARTIALS.md)
