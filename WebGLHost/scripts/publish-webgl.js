@@ -169,6 +169,13 @@ body {
   height: 100% !important;
 }
 
+#unity-container.unity-desktop,
+#unity-container.unity-mobile {
+  left: 0 !important;
+  top: 0 !important;
+  transform: none !important;
+}
+
 #unity-canvas {
   display: block;
   width: 100% !important;

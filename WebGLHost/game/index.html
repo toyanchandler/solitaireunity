@@ -51,7 +51,7 @@
         updateBannerVisibility();
       }
       var buildUrl = "Build";
-      var buildVersion = "webgl-20260609015808";
+      var buildVersion = "webgl-20260609021943";
       var loaderUrl = buildUrl + "/webglbuild.loader.js?v=" + buildVersion;
       var config = {
         arguments: [],
@@ -103,7 +103,7 @@
 
 
       } else {
-        // Desktop style: fill the viewport supplied by the host page.
+        // Desktop style: Render the game canvas in a window that can be maximized to fullscreen:
         canvas.style.width = "100%";
         canvas.style.height = "100%";
       }
@@ -120,6 +120,7 @@
         new ResizeObserver(forceUnityResize).observe(document.documentElement);
       }
 
+
       document.querySelector("#unity-loading-bar").style.display = "block";
 
       var script = document.createElement("script");
@@ -129,7 +130,6 @@
           document.querySelector("#unity-progress-bar-full").style.width = 100 * progress + "%";
               }).then((unityInstance) => {
                 document.querySelector("#unity-loading-bar").style.display = "none";
-                forceUnityResize();
                 forceUnityResize();
                 document.querySelector("#unity-fullscreen-button").onclick = () => {
                   unityInstance.SetFullscreen(1);
