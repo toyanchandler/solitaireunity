@@ -227,18 +227,20 @@ Unity 6, URP, Unity UI, DOTween, NiceVibrations, Unity Test Framework, MCP for U
 Recommended local commands:
 
 ```bash
-/Users/bengisucay/Unity/Hub/Editor/6000.3.16f1/Unity.app/Contents/MacOS/Unity \
-  -projectPath /Users/bengisucay/Unity/BaseProject -batchmode -nographics \
-  -executeMethod _Game.Scripts.Project.SolitaireModule.Editor.SolitaireTestRunnerUtility.RunEditModeAndExit \
-  -logFile /tmp/baseproject-test-results/api-editmode.log
+UNITY_EDITOR="/path/to/Unity.app/Contents/MacOS/Unity"
 
-/Users/bengisucay/Unity/Hub/Editor/6000.3.16f1/Unity.app/Contents/MacOS/Unity \
-  -projectPath /Users/bengisucay/Unity/BaseProject -batchmode -nographics \
+"$UNITY_EDITOR" \
+  -projectPath "$(pwd)" -batchmode -nographics \
+  -executeMethod _Game.Scripts.Project.SolitaireModule.Editor.SolitaireTestRunnerUtility.RunEditModeAndExit \
+  -logFile -
+
+"$UNITY_EDITOR" \
+  -projectPath "$(pwd)" -batchmode -nographics \
   -executeMethod _Game.Scripts.Project.SolitaireModule.Editor.SolitaireTestRunnerUtility.RunPlayModeAndExit \
-  -logFile /tmp/baseproject-test-results/api-playmode.log
+  -logFile -
 ```
 
-Latest local evidence: EditMode `16/16` passed in `/tmp/baseproject-test-results/api-editmode.xml`; PlayMode `4/4` passed in `/tmp/baseproject-test-results/api-playmode.xml`.
+Latest local evidence: EditMode `16/16` passed; PlayMode `4/4` passed.
 
 Editor validation is also available through:
 
@@ -262,21 +264,21 @@ The post-build hook runs the Vercel host script and performs the full publish fl
 Manual publish is still available when reusing an existing `webglbuild/` folder:
 
 ```bash
-cd /Users/bengisucay/Unity/BaseProject/WebGLHost
+cd WebGLHost
 npm run postbuild:publish
 ```
 
 To publish a custom Unity output folder:
 
 ```bash
-cd /Users/bengisucay/Unity/BaseProject/WebGLHost
+cd WebGLHost
 npm run postbuild:publish -- --source Builds/WebGL/Solitaire
 ```
 
 For a dry local publish without deploying:
 
 ```bash
-cd /Users/bengisucay/Unity/BaseProject/WebGLHost
+cd WebGLHost
 npm run postbuild:local
 ```
 

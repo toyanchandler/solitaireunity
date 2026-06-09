@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using UnityEditor;
 using UnityEditor.TestTools.TestRunner.Api;
 using UnityEngine;
@@ -12,12 +13,26 @@ namespace _Game.Scripts.Project.SolitaireModule.Editor
 
         public static void RunEditModeAndExit()
         {
-            RunAndExit(ApiTestMode.EditMode, "/tmp/baseproject-test-results/api-editmode.xml");
+            RunAndExit(ApiTestMode.EditMode, GetResultPath("api-editmode.xml"));
         }
 
         public static void RunPlayModeAndExit()
         {
-            RunAndExit(ApiTestMode.PlayMode, "/tmp/baseproject-test-results/api-playmode.xml");
+            RunAndExit(ApiTestMode.PlayMode, GetResultPath("api-playmode.xml"));
+        }
+
+        private static string GetResultPath(string fileName)
+        {
+            string outputDirectory = Environment.GetEnvironmentVariable("SOLITAIRE_TEST_RESULTS_DIR");
+
+            if (string.IsNullOrWhiteSpace(outputDirectory))
+            {
+                string projectRoot = Path.GetDirectoryName(Application.dataPath);
+                outputDirectory = Path.Combine(projectRoot, "TestResults", "Solitaire");
+            }
+
+            Directory.CreateDirectory(outputDirectory);
+            return Path.Combine(outputDirectory, fileName);
         }
 
         private static void RunAndExit(ApiTestMode mode, string resultPath)
