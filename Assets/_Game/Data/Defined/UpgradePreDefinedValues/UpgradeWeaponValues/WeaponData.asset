@@ -1,0 +1,39 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 331fe519b461428c8a29f797fc85d051, type: 3}
+  m_Name: WeaponData
+  m_EditorClassIdentifier: 
+  serializationData:
+    SerializedFormat: 2
+    SerializedBytes: 
+    ReferencedUnityObjects: []
+    SerializedBytesString: 
+    Prefab: {fileID: 0}
+    PrefabModificationsReferencedUnityObjects: []
+    PrefabModifications: []
+    SerializationNodes: []
+  upgradeLevelData:
+  - requiredCurrencyForNextLevel: 500
+    value: 5
+    collectableType: 0
+  upgradeType: 4
+  collectableType: 0
+  isFormulaWillBeUsed: 0
+  formulaValueA: 5.28
+  formulaValueB: 20.73
+  formulaValueC: 50.48
+  formulaCostA: 7.15
+  formulaCostB: 18.19
+  formulaCostC: 35.03
+  a_fireRate: 0.01
+  b_fireRate: 0.2
+  c_fireRate: 0.5

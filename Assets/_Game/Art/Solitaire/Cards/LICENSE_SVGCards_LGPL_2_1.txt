@@ -1,0 +1,7 @@
+Court card front sprites for Jack, Queen, and King are derived from SVG-cards.
+
+Source: https://github.com/htdebeer/SVG-cards
+Original project: SVG-cards by David Bellot, fork maintained by H. T. de Beer.
+License: GNU Lesser General Public License v2.1 or later.
+
+Modified for this project by rasterizing the 2x PNG card renders, center-cropping to the local card aspect, and resizing to 500x726 pixels.

@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Klondike Solitaire WebGL</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="toolbar" aria-label="Display controls">
+        <div class="brand">
+          <strong>Klondike Solitaire</strong>
+          <span>Unity WebGL validation host</span>
+        </div>
+        <div class="controls">
+          <button type="button" class="preset active" data-size="390x844">Portrait</button>
+          <button type="button" class="preset" data-size="844x390">Landscape</button>
+          <button type="button" class="preset" data-size="430x932">Tall</button>
+          <button type="button" class="preset" data-size="1024x576">Wide</button>
+          <label>
+            W
+            <input id="widthInput" type="number" min="320" max="1280" value="390" />
+          </label>
+          <label>
+            H
+            <input id="heightInput" type="number" min="320" max="1280" value="844" />
+          </label>
+          <button id="applySize" type="button">Apply</button>
+          <button id="reloadGame" type="button">Refresh</button>
+        </div>
+      </section>
+
+      <section class="stage-wrap">
+        <div id="stage" class="stage" style="--stage-width: 390px; --stage-height: 844px">
+          <iframe
+            id="gameFrame"
+            title="Klondike Solitaire WebGL"
+            src="/game/index.html"
+            allow="fullscreen; autoplay"
+          ></iframe>
+        </div>
+      </section>
+    </main>
+
+    <script src="/app.js"></script>
+  </body>
+</html>

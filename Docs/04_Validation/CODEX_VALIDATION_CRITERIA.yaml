@@ -1,0 +1,65 @@
+version: 1
+name: Handler Hypercasual Architecture Validation
+status_values:
+  - PASS
+  - PASS_WITH_WARNINGS
+  - FAIL
+
+hard_rejects:
+  - id: runtime_find_object
+    description: Production runtime code uses FindObjectOfType, GameObject.Find, Transform.Find, or deep hierarchy search to repair missing references.
+    patterns:
+      - FindObjectOfType
+      - GameObject.Find
+      - Transform.Find
+  - id: save_index_semantics
+    description: SaveManager or save code uses array index as semantic meaning, such as _constantSaveables[0].
+    patterns:
+      - _constantSaveables[0]
+      - _runtimeSaveables[0]
+  - id: analytics_in_gameplay
+    description: Gameplay or view class directly calls analytics SDK instead of IAnalyticsService/AnalyticsManager.
+  - id: save_sdk_in_gameplay
+    description: Gameplay or view class directly calls ES3 or another save SDK.
+  - id: so_orchestration
+    description: ScriptableObject performs gameplay orchestration, SDK calls, scene search, or feature unlock decisions.
+  - id: static_hidden_state
+    description: Internal static helper stores runtime scene references, subscribes to events, or hides mutable runtime state.
+
+warnings:
+  - id: public_mutable_field
+    description: Public mutable field is used where private serialized field plus property would be safer.
+  - id: anonymous_payload_tostring
+    description: Analytics payload uses anonymous object ToString instead of structured parameters.
+  - id: ondestroy_unsubscribe
+    description: Event subscription is cleaned in OnDestroy where OnDisable may be safer.
+  - id: vector_zero_fallback
+    description: Required authored reference falls back to Vector3.zero.
+  - id: manager_too_broad
+    description: Manager owns unrelated responsibilities.
+
+required_checks:
+  save:
+    - list_all_saveable_providers
+    - verify_load_all
+    - verify_save_all
+    - verify_player_data_save_on_level_success
+  analytics:
+    - list_all_analytics_events
+    - verify_sdk_boundary
+    - verify_no_gameplay_sdk_calls
+  runtime_so:
+    - list_all_runtime_scriptable_objects
+    - verify_reset_runtime_state
+    - verify_no_orchestration
+  level:
+    - verify_level_reference_holder_on_level_roots
+    - verify_required_level_references
+  camera:
+    - verify_success_camera_path
+    - verify_fail_camera_path_if_supported
+  character:
+    - verify_character_spawn_from_level_holder
+  ui:
+    - verify_views_do_not_save_or_log_analytics
+    - verify_late_subscriber_render_current_state

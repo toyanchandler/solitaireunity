@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: b9f3773e7a86f1241b237a27299f5f11
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 235001
+  packageName: UI Particle Image
+  packageVersion: 1.2.2
+  assetPath: Assets/AssetKits/ParticleImage/Demo/Materials/Additive.mat
+  uploadId: 620919

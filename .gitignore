@@ -1,0 +1,56 @@
+# Unity generated files
+/Library/
+/Temp/
+/Obj/
+/Build/
+/Builds/
+/Logs/
+/UserSettings/
+/MemoryCaptures/
+
+# Unity crash and profiler artifacts
+/sysinfo.txt
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+
+# IDE files
+.idea/
+.vs/
+.vscode/
+*.csproj
+*.sln
+*.suo
+*.user
+*.userprefs
+*.pidb
+*.booproj
+
+# OS files
+.DS_Store
+._*
+Thumbs.db
+
+# Build artifacts
+*.apk
+*.aab
+*.ipa
+*.unitypackage
+*.zip
+/webglbuild/
+
+# Local validation artifacts
+/Assets/Screenshots/
+/Assets/InitTestScene*.unity
+/Assets/InitTestScene*.unity.meta
+/Assets/Resources/PerformanceTestRunInfo.json
+/Assets/Resources/PerformanceTestRunInfo.json.meta
+/Assets/Resources/PerformanceTestRunSettings.json
+/Assets/Resources/PerformanceTestRunSettings.json.meta
+/Assets/_Recovery.meta
+/Assets/_Recovery/
+/mono_crash*
