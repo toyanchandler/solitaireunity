@@ -227,8 +227,6 @@ Unity 6, URP, Unity UI, DOTween, NiceVibrations, Unity Test Framework, MCP for U
 Recommended local commands:
 
 ```bash
-UNITY_EDITOR="/path/to/Unity.app/Contents/MacOS/Unity"
-
 "$UNITY_EDITOR" \
   -projectPath "$(pwd)" -batchmode -nographics \
   -executeMethod _Game.Scripts.Project.SolitaireModule.Editor.SolitaireTestRunnerUtility.RunEditModeAndExit \
