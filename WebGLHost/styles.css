@@ -9,10 +9,13 @@
   box-sizing: border-box;
 }
 
+html,
 body {
   margin: 0;
-  min-height: 100vh;
+  width: 100%;
+  height: 100%;
   background: #111318;
+  overflow: hidden;
 }
 
 button,
@@ -21,9 +24,10 @@ input {
 }
 
 .shell {
-  min-height: 100vh;
+  height: 100vh;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .toolbar {
@@ -97,18 +101,19 @@ input {
 
 .stage-wrap {
   flex: 1;
+  min-height: 0;
   display: grid;
   place-items: center;
   padding: 24px;
-  overflow: auto;
+  overflow: hidden;
 }
 
 .stage {
-  width: var(--stage-width);
-  height: var(--stage-height);
-  max-width: calc(100vw - 48px);
-  min-width: 320px;
-  min-height: 320px;
+  aspect-ratio: var(--stage-aspect);
+  width: min(var(--stage-width), calc(100vw - 48px), calc((100vh - 120px) * var(--stage-aspect)));
+  height: auto;
+  max-height: calc(100vh - 120px);
+  min-width: min(320px, calc(100vw - 48px));
   background: #05070a;
   border: 1px solid #303946;
   box-shadow: 0 18px 50px rgba(0, 0, 0, 0.38);
@@ -141,6 +146,8 @@ input {
   }
 
   .stage {
-    max-width: calc(100vw - 24px);
+    width: min(var(--stage-width), calc(100vw - 24px), calc((100vh - 220px) * var(--stage-aspect)));
+    max-height: calc(100vh - 220px);
+    min-width: min(280px, calc(100vw - 24px));
   }
 }

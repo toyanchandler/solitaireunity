@@ -15,6 +15,7 @@ namespace _Game.Scripts.Project.SolitaireModule.Views
 
         private Coroutine _pulseRoutine;
         private Vector3 _homeScale = Vector3.one;
+        private bool _isSlotVisualVisible = true;
 
         public SolitairePileType PileType => pileType;
         public int PileIndex => pileIndex;
@@ -49,7 +50,16 @@ namespace _Game.Scripts.Project.SolitaireModule.Views
             if (highlightRenderer == null)
                 return;
 
+            highlightRenderer.enabled = isHighlighted || _isSlotVisualVisible;
             ApplyHighlightColor(isHighlighted ? color : GetDefaultSlotColor());
+        }
+
+        public void SetSlotVisualVisible(bool isVisible)
+        {
+            _isSlotVisualVisible = isVisible;
+
+            if (highlightRenderer != null)
+                highlightRenderer.enabled = isVisible;
         }
 
         public void PlayFoundationPulse(SolitaireDeckConfigSO config)
@@ -157,6 +167,7 @@ namespace _Game.Scripts.Project.SolitaireModule.Views
             highlightRenderer.sprite = previousSprite;
             highlightRenderer.drawMode = previousDrawMode;
             ApplyHighlightColor(GetDefaultSlotColor());
+            highlightRenderer.enabled = _isSlotVisualVisible;
             _pulseRoutine = null;
         }
 

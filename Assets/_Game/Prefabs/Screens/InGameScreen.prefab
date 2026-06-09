@@ -178,7 +178,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7daf1b1b23ea4e999f2f3e7eb2c0f2ee, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::_Game.Scripts.UI.Buttons.SolitaireAutoCompleteButton
-  targetButton: {fileID: 0}
+  targetButton: {fileID: 1046685483480065055}
   usePointerDownInsteadOfClick: 0
 --- !u!1 &4306809552256241593
 GameObject:
@@ -442,7 +442,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f663757bdfe548bfbaa19168f8c0df07, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::_Game.Scripts.UI.Buttons.SolitaireHintButton
-  targetButton: {fileID: 0}
+  targetButton: {fileID: 2783485146048554275}
   usePointerDownInsteadOfClick: 0
 --- !u!1 &8123456789012345601
 GameObject:

@@ -150,7 +150,7 @@ namespace _Game.Scripts.Project.SolitaireModule.Controllers
                 if (!_moveService.TryGetNextAutoCompleteMove(_context.BoardState, _config, out SolitaireHint hint))
                     break;
 
-                if (!TryAutoMoveToFoundation(hint.Move.StartCardId))
+                if (!TryExecuteAutoCompleteMove(hint))
                     break;
 
                 completedMoveCount++;
@@ -159,6 +159,21 @@ namespace _Game.Scripts.Project.SolitaireModule.Controllers
             AutoCompleteCompleted?.Invoke(completedMoveCount);
             EventManager.SolitaireEvents.AutoCompleteCompleted?.Invoke(completedMoveCount);
             return completedMoveCount;
+        }
+
+        private bool TryExecuteAutoCompleteMove(SolitaireHint hint)
+        {
+            switch (hint.Kind)
+            {
+                case SolitaireHintKind.MoveToFoundation:
+                    return TryAutoMoveToFoundation(hint.Move.StartCardId);
+                case SolitaireHintKind.WasteToTableau:
+                case SolitaireHintKind.RevealTableauByMove:
+                case SolitaireHintKind.TableauToTableau:
+                    return TryMoveCardToSlot(hint.Move.StartCardId, hint.Move.Target);
+                default:
+                    return false;
+            }
         }
 
         public bool TryMoveCardToSlot(int cardId, PileRef target)

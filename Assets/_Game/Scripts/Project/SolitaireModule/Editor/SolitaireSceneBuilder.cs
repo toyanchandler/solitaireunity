@@ -628,7 +628,6 @@ namespace _Game.Scripts.Project.SolitaireModule.Editor
             renderer.sprite = frontSprite;
             renderer.sortingOrder = 100;
             ApplyCardWorldSize(card, frontSprite);
-            card.AddComponent<SortingGroup>();
             BoxCollider2D collider = card.AddComponent<BoxCollider2D>();
             collider.size = GetUnscaledColliderSize(card.transform.localScale.x);
             collider.isTrigger = true;
@@ -645,7 +644,7 @@ namespace _Game.Scripts.Project.SolitaireModule.Editor
             SetObject(view, "identity", identity);
             SetObject(view, "visualStateMachine", card.GetComponent<CardVisualStateMachine>());
             SetObject(view, "cardRenderer", renderer);
-            SetObject(view, "sortingGroup", card.GetComponent<SortingGroup>());
+            SetObject(view, "sortingGroup", null);
             SetObject(view, "motionPresenter", motionPresenter);
             EnsureCardDragShadow(card, renderer, view);
 
@@ -663,6 +662,7 @@ namespace _Game.Scripts.Project.SolitaireModule.Editor
                 renderer.sprite = frontSprite;
 
             RemoveCardLabels(card.transform);
+            DisableSortingGroup(card);
             ApplyCardWorldSize(card, frontSprite);
             BoxCollider2D collider = card.GetComponent<BoxCollider2D>();
 
@@ -724,12 +724,24 @@ namespace _Game.Scripts.Project.SolitaireModule.Editor
                 Sprite dragShadowSprite = AssetDatabase.LoadAssetAtPath<Sprite>(DragShadowSpritePath);
                 shadowRenderer.sprite = dragShadowSprite != null ? dragShadowSprite : cardRenderer.sprite;
                 shadowRenderer.sortingLayerID = cardRenderer.sortingLayerID;
+                shadowRenderer.sortingOrder = cardRenderer.sortingOrder - 1;
             }
 
+            shadowRenderer.enabled = false;
             Color shadowColor = Color.black;
             shadowColor.a = 0f;
             shadowRenderer.color = shadowColor;
             SetObject(view, "dragShadowRenderer", shadowRenderer);
+        }
+
+        private static void DisableSortingGroup(GameObject card)
+        {
+            SortingGroup sortingGroup = card.GetComponent<SortingGroup>();
+
+            if (sortingGroup == null)
+                return;
+
+            sortingGroup.enabled = false;
         }
 
         private static void RemoveChildIfExists(Transform parent, string childName)

@@ -390,6 +390,26 @@ namespace _Game.Tests.SolitaireModule.EditMode
             }
         }
 
+        [Test]
+        public void AutoComplete_IncludesWasteToTableau_WhenNoFoundationMoveExists()
+        {
+            object board = CreateBoardWithCards(
+                ("Spades", "Nine", "Waste", 0, true),
+                ("Hearts", "Ten", "Tableau", 0, true));
+            object service = CreateMoveService();
+            ScriptableObject config = ScriptableObject.CreateInstance(Config);
+
+            try
+            {
+                Assert.IsTrue(TryGetNextAutoCompleteMove(service, board, config, out object hint));
+                Assert.AreEqual("WasteToTableau", Field(hint, "Kind").ToString());
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(config);
+            }
+        }
+
         private static object CreateMoveService()
         {
             object resolver = New(MoveResolver);

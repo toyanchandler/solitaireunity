@@ -56,6 +56,21 @@ namespace _Game.Scripts.Project.SolitaireModule.Runtime
             return true;
         }
 
+        public bool TryGetNextAutoCompleteMove(SolitaireBoardState board, SolitaireDeckConfigSO config, out SolitaireHint hint)
+        {
+            if (TryGetNextFoundationMove(board, config, out hint))
+                return true;
+
+            if (TryGetNextWasteToTableauMove(board, config, out hint))
+                return true;
+
+            if (TryGetNextTableauRevealMove(board, config, out hint))
+                return true;
+
+            hint = SolitaireHint.None;
+            return false;
+        }
+
         public bool TryGetNextFoundationMove(SolitaireBoardState board, SolitaireDeckConfigSO config, out SolitaireHint hint)
         {
             var singleHint = new SolitaireHint[1];
@@ -75,6 +90,74 @@ namespace _Game.Scripts.Project.SolitaireModule.Runtime
                 {
                     hint = singleHint[0];
                     return true;
+                }
+            }
+
+            hint = SolitaireHint.None;
+            return false;
+        }
+
+        private bool TryGetNextWasteToTableauMove(SolitaireBoardState board, SolitaireDeckConfigSO config, out SolitaireHint hint)
+        {
+            int cardId = board.Waste.PeekTop();
+
+            if (cardId < 0)
+            {
+                hint = SolitaireHint.None;
+                return false;
+            }
+
+            var source = new PileRef(SolitairePileType.Waste, 0);
+
+            for (int targetIndex = 0; targetIndex < board.Tableaus.Length; targetIndex++)
+            {
+                var targetPile = new PileRef(SolitairePileType.Tableau, targetIndex);
+                var move = new SolitaireMove(SolitaireMoveType.WasteToTableau, cardId, source, targetPile);
+
+                if (!CanExecute(board, config, move))
+                    continue;
+
+                hint = new SolitaireHint(SolitaireHintKind.WasteToTableau, move);
+                return true;
+            }
+
+            hint = SolitaireHint.None;
+            return false;
+        }
+
+        private bool TryGetNextTableauRevealMove(SolitaireBoardState board, SolitaireDeckConfigSO config, out SolitaireHint hint)
+        {
+            for (int sourceIndex = 0; sourceIndex < board.Tableaus.Length; sourceIndex++)
+            {
+                FixedCardPileState sourcePile = board.Tableaus[sourceIndex];
+
+                for (int cardIndex = 0; cardIndex < sourcePile.Count; cardIndex++)
+                {
+                    int cardId = sourcePile[cardIndex];
+                    CardState card = board.GetCard(cardId);
+
+                    if (!card.IsFaceUp)
+                        continue;
+
+                    if (!WillRevealHiddenTableauCard(board, sourcePile, cardIndex))
+                        continue;
+
+                    var source = new PileRef(SolitairePileType.Tableau, sourceIndex);
+
+                    for (int targetIndex = 0; targetIndex < board.Tableaus.Length; targetIndex++)
+                    {
+                        if (targetIndex == sourceIndex)
+                            continue;
+
+                        var targetPile = new PileRef(SolitairePileType.Tableau, targetIndex);
+                        var move = new SolitaireMove(SolitaireMoveType.TableauToTableau, cardId, source, targetPile);
+
+                        if (!CanExecute(board, config, move))
+                            continue;
+
+                        hint = new SolitaireHint(SolitaireHintKind.RevealTableauByMove, move);
+                        return true;
+                    }
                 }
             }
 

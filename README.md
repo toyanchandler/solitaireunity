@@ -50,7 +50,9 @@ Latest measured run:
 | Hint enumeration | 100,000 | 268.426 ms | 2.684 us | 372,542 ops/s |
 | AutoComplete foundation sweep | 20,000 | 818.944 ms | 40.947 us | 24,422 ops/s |
 
-Runtime rendering snapshot from the current editor session captured `31` draw calls, `31` batches, `17` set-pass calls, `361` triangles, and `935` vertices during Play Mode warm-up. A stable FPS number is intentionally not listed yet because the editor session did not remain in Play Mode long enough for a steady-state capture; do not replace this with a guessed FPS value.
+Runtime rendering snapshot from the current editor session captured two complementary counters after the board settled in Play Mode. Unity Game View Stats reported `39` draw calls, `39` batches, `4` set-pass calls, `280` triangles, and `442` vertices with `37` active renderers. Frame Debugger grouped the same frame into `8` URP render events: the Solitaire card/slot sprites rendered under one `DrawTransparentObjects/RenderLoop.DrawSRPBatcher` event, followed by final blit and screen-space UI events. This distinction matters when comparing against repositories that quote Frame Debugger event counts instead of Game View Stats draw calls.
+
+Sprite atlas validation is enabled for editor and WebGL captures: `SolitaireSprites.spriteatlas` is packed as a single `8192x4096` WebGL atlas page for visible Solitaire sprites, with `35/36` active SpriteRenderers using packed sprites in the measured frame. The remaining unpacked SpriteRenderer is the transient deck ripple effect.
 
 HUD layout was revised after Hint/AutoComplete were added: 390x844 portrait and 844x390 landscape bounding-box checks for Moves, Score, Undo, Hint, and AutoComplete returned no overlaps. Real gameplay screenshots are still kept as a deployment validation step rather than claimed here.
 
@@ -61,6 +63,8 @@ HUD layout was revised after Hint/AutoComplete were added: 390x844 portrait and 
 - **Responsive sizing** - `SolitaireLayoutController` scales slots/cards from config and board camera metrics.
 - **Layered drag presentation** - dragged cards move under `DragParent` and render above board cards.
 - **Config-driven visuals** - `SolitaireCardVisualCatalogSO` owns card sprite lookup instead of hardcoded runtime choices.
+- **Runtime visibility culling** - overlapped stock/foundation cards, inactive drag shadows, inactive selection highlights, and covered slot ghosts do not keep their SpriteRenderers enabled.
+- **Atlas-first SpriteRenderer path** - the module stays on SpriteRenderer rendering, with `SolitaireSprites.spriteatlas` set to editor/WebGL packing instead of moving cards to Canvas or a custom mesh renderer.
 
 ## Architecture
 
@@ -118,6 +122,51 @@ Editor validation is also available through:
 - `Tools/Solitaire/Repair Main Scene`
 - `Tools/Solitaire/Run Benchmarks`
 - `SolitaireModuleBootstrap.Validate`
+
+## WebGL Publish
+
+Every successful Unity WebGL build is auto-published by `SolitaireWebGLPostBuildPublisher`.
+
+The post-build hook runs the Vercel host script and performs the full publish flow:
+
+- Copies the generated Unity WebGL output into `WebGLHost/game`.
+- Patches Unity's generated shell so the canvas fills the wrapper responsively.
+- Keeps the wrapper scroll-free in portrait and landscape by letting the host control the iframe size.
+- Adds a build-version query string to Unity loader/data/wasm assets so stale browser caches do not show an older build.
+- Runs `vercel --prod --yes`.
+
+Manual publish is still available when reusing an existing `webglbuild/` folder:
+
+```bash
+cd /Users/bengisucay/Unity/BaseProject/WebGLHost
+npm run postbuild:publish
+```
+
+To publish a custom Unity output folder:
+
+```bash
+cd /Users/bengisucay/Unity/BaseProject/WebGLHost
+npm run postbuild:publish -- --source Builds/WebGL/Solitaire
+```
+
+For a dry local publish without deploying:
+
+```bash
+cd /Users/bengisucay/Unity/BaseProject/WebGLHost
+npm run postbuild:local
+```
+
+Disable the automatic Unity post-build deploy when needed:
+
+```bash
+export SOLITAIRE_WEBGL_AUTO_PUBLISH=0
+```
+
+Set `BUILD_VERSION` when a human-readable release tag is useful:
+
+```bash
+BUILD_VERSION=cardback-20260609 npm run postbuild:publish
+```
 
 ## How to Play
 

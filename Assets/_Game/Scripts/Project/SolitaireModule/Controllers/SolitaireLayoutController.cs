@@ -160,6 +160,7 @@ namespace _Game.Scripts.Project.SolitaireModule.Controllers
             Vector3 basePosition = slot.transform.position;
             float animationDuration = GetPileAnimationDuration(animate, flipCardId);
             Vector2 cardSize = _context.LayoutMetrics.CardSize;
+            slot.SetSlotVisualVisible(pile.Count == 0);
 
             if (animate && pile.Count > 0)
                 LockInputForAnimation(animationDuration);
@@ -173,6 +174,7 @@ namespace _Game.Scripts.Project.SolitaireModule.Controllers
                 card.CachedTransform.SetParent(GetParentForPile(pileRef), true);
                 card.ApplyLayoutSize(cardSize);
                 card.SetSortingOrder(_config.BaseSortingOrder + i);
+                card.SetCardRendererVisible(ShouldRenderCardInPile(pileRef, pile, i));
 
                 if (animate && cardId == flipCardId && state.IsFaceUp)
                     PlayCardFlipPresentation(card, state, target);
@@ -213,6 +215,7 @@ namespace _Game.Scripts.Project.SolitaireModule.Controllers
             {
                 FixedCardPileState pile = _context.BoardState.GetPile(new PileRef(SolitairePileType.Tableau, column));
                 SolitaireSlotAnchor slot = _context.ViewRegistry.GetSlot(new PileRef(SolitairePileType.Tableau, column));
+                slot.SetSlotVisualVisible(pile.Count == 0);
                 Vector3 basePosition = slot.transform.position;
 
                 for (int row = 0; row <= column; row++)
@@ -226,6 +229,7 @@ namespace _Game.Scripts.Project.SolitaireModule.Controllers
                     card.CachedTransform.SetParent(slot.transform, true);
                     card.ApplyLayoutSize(cardSize);
                     card.SetSortingOrder(_config.BaseSortingOrder + row + (column * 4));
+                    card.SetCardRendererVisible(true);
                     card.PlayDealMove(
                         target,
                         state,
@@ -245,6 +249,9 @@ namespace _Game.Scripts.Project.SolitaireModule.Controllers
 
             for (int i = 0; i < SolitaireCardUtility.FoundationCount; i++)
                 RefreshPile(new PileRef(SolitairePileType.Foundation, i), false);
+
+            for (int i = 0; i < SolitaireCardUtility.TableauCount; i++)
+                RefreshPile(new PileRef(SolitairePileType.Tableau, i), false);
 
             _dealRoutine = null;
             Action callback = _dealCompletedCallback;
@@ -299,6 +306,7 @@ namespace _Game.Scripts.Project.SolitaireModule.Controllers
                 card.ApplyLayoutSize(cardSize);
                 card.ApplyBackFace(state, _config);
                 card.SetSortingOrder(_config.BaseSortingOrder + cardId);
+                card.SetCardRendererVisible(state.CurrentPileType == SolitairePileType.Stock && stockPile.IsTopCard(cardId));
 
                 if (state.CurrentPileType == SolitairePileType.Stock)
                 {
@@ -355,6 +363,20 @@ namespace _Game.Scripts.Project.SolitaireModule.Controllers
                 basePosition,
                 index,
                 card);
+        }
+
+        private static bool ShouldRenderCardInPile(PileRef pileRef, FixedCardPileState pile, int index)
+        {
+            switch (pileRef.Type)
+            {
+                case SolitairePileType.Stock:
+                case SolitairePileType.Foundation:
+                    return index == pile.Count - 1;
+                case SolitairePileType.Waste:
+                    return index >= pile.Count - 3;
+                default:
+                    return true;
+            }
         }
 
         private Transform GetParentForPile(PileRef pileRef)

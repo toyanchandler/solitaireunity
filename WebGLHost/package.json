@@ -4,6 +4,10 @@
   "private": true,
   "scripts": {
     "start": "vercel dev --listen 3000",
-    "serve": "python3 -m http.server 3000"
+    "serve": "python3 -m http.server 3000",
+    "postbuild:publish": "node scripts/publish-webgl.js",
+    "postbuild:local": "node scripts/publish-webgl.js --no-deploy",
+    "publish:webgl": "node scripts/publish-webgl.js",
+    "publish:webgl:local": "node scripts/publish-webgl.js --no-deploy"
   }
 }

@@ -11,6 +11,7 @@ function setSize(width, height) {
   const nextHeight = Math.max(320, Math.min(1280, Number(height) || 844));
   stage.style.setProperty("--stage-width", `${nextWidth}px`);
   stage.style.setProperty("--stage-height", `${nextHeight}px`);
+  stage.style.setProperty("--stage-aspect", String(nextWidth / nextHeight));
   widthInput.value = String(nextWidth);
   heightInput.value = String(nextHeight);
 

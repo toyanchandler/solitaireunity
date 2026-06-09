@@ -26,6 +26,7 @@ namespace _Game.Scripts.Project.SolitaireModule.Views
         public int CardId => identity != null ? identity.CardId : -1;
         public Transform CachedTransform => transform;
         public bool IsPresenting => motionPresenter != null && motionPresenter.IsPresenting;
+        public bool IsCardRendererVisible => cardRenderer != null && cardRenderer.enabled;
 
         private void Awake()
         {
@@ -116,9 +117,28 @@ namespace _Game.Scripts.Project.SolitaireModule.Views
         public void SetSortingOrder(int order)
         {
             if (sortingGroup != null)
-                sortingGroup.sortingOrder = order;
-            else if (cardRenderer != null)
+                sortingGroup.enabled = false;
+
+            if (cardRenderer != null)
                 cardRenderer.sortingOrder = order;
+
+            if (dragShadowRenderer != null)
+                dragShadowRenderer.sortingOrder = order - 1;
+
+            if (selectionHighlightRenderer != null)
+                selectionHighlightRenderer.sortingOrder = order + 2;
+        }
+
+        public void SetCardRendererVisible(bool isVisible)
+        {
+            if (cardRenderer != null)
+                cardRenderer.enabled = isVisible;
+
+            if (!isVisible)
+            {
+                SetSelectionHighlight(false);
+                ResetDragShadow();
+            }
         }
 
         public void MoveTo(Vector3 targetPosition, float duration)
@@ -151,6 +171,7 @@ namespace _Game.Scripts.Project.SolitaireModule.Views
             float arcHeight,
             bool flipOnLand)
         {
+            SetCardRendererVisible(true);
             motionPresenter.PlayDealMove(targetPosition, state, config, moveDuration, flipDuration, arcHeight, flipOnLand);
         }
 
@@ -159,6 +180,7 @@ namespace _Game.Scripts.Project.SolitaireModule.Views
             if (config == null || IsPresenting)
                 return;
 
+            SetCardRendererVisible(true);
             SetSelectionHighlight(true);
             _isDragVisualActive = true;
             visualStateMachine?.SetState(CardVisualState.Dragging);
@@ -173,6 +195,8 @@ namespace _Game.Scripts.Project.SolitaireModule.Views
 
             if (dragShadowRenderer != null)
             {
+                dragShadowRenderer.enabled = true;
+
                 if (dragShadowRenderer.sprite == null && cardRenderer != null)
                     dragShadowRenderer.sprite = cardRenderer.sprite;
 
@@ -264,13 +288,17 @@ namespace _Game.Scripts.Project.SolitaireModule.Views
         private void EnsureDragShadow()
         {
             if (dragShadowRenderer != null)
+            {
+                dragShadowRenderer.enabled = _isDragVisualActive;
                 return;
+            }
 
             Transform existing = transform.Find("DragShadow");
 
             if (existing != null)
             {
                 dragShadowRenderer = existing.GetComponent<SpriteRenderer>();
+                dragShadowRenderer.enabled = _isDragVisualActive;
                 return;
             }
 
@@ -278,12 +306,12 @@ namespace _Game.Scripts.Project.SolitaireModule.Views
             shadowObject.transform.SetParent(transform, false);
             shadowObject.transform.localPosition = new Vector3(0.04f, -0.05f, 0.01f);
             dragShadowRenderer = shadowObject.AddComponent<SpriteRenderer>();
-            dragShadowRenderer.sortingOrder = -1;
 
             if (cardRenderer != null)
             {
                 dragShadowRenderer.sprite = cardRenderer.sprite;
                 dragShadowRenderer.sortingLayerID = cardRenderer.sortingLayerID;
+                dragShadowRenderer.sortingOrder = cardRenderer.sortingOrder - 1;
             }
 
             ResetDragShadow();
@@ -293,6 +321,8 @@ namespace _Game.Scripts.Project.SolitaireModule.Views
         {
             if (dragShadowRenderer == null)
                 return;
+
+            dragShadowRenderer.enabled = false;
 
             Color shadowColor = dragShadowRenderer.color;
             shadowColor.a = 0f;
@@ -317,12 +347,12 @@ namespace _Game.Scripts.Project.SolitaireModule.Views
             highlightObject.transform.SetParent(transform, false);
             highlightObject.transform.localPosition = new Vector3(0f, 0f, -0.02f);
             selectionHighlightRenderer = highlightObject.AddComponent<SpriteRenderer>();
-            selectionHighlightRenderer.sortingOrder = 2;
             selectionHighlightRenderer.enabled = false;
 
             if (cardRenderer != null)
             {
                 selectionHighlightRenderer.sortingLayerID = cardRenderer.sortingLayerID;
+                selectionHighlightRenderer.sortingOrder = cardRenderer.sortingOrder + 2;
 
                 if (selectionHighlightRenderer.sprite == null)
                     selectionHighlightRenderer.sprite = Resources.Load<Sprite>("Solitaire/card_selection_highlight");

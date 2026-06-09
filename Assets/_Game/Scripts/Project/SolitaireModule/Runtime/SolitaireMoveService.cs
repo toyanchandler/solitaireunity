@@ -138,7 +138,7 @@ namespace _Game.Scripts.Project.SolitaireModule.Runtime
 
         public bool TryGetNextAutoCompleteMove(SolitaireBoardState board, SolitaireDeckConfigSO config, out SolitaireHint hint)
         {
-            return _hintService.TryGetNextFoundationMove(board, config, out hint);
+            return _hintService.TryGetNextAutoCompleteMove(board, config, out hint);
         }
 
         public bool TryDrawOrRecycleStock(

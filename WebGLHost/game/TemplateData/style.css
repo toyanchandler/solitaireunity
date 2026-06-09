@@ -14,3 +14,32 @@ html, body { width: 100%; height: 100%; padding: 0; margin: 0; overflow: hidden;
 #unity-build-title { float: right; margin-right: 10px; line-height: 38px; font-family: arial; font-size: 18px }
 #unity-fullscreen-button { cursor:pointer; float: right; width: 38px; height: 38px; background: url('fullscreen-button.png') no-repeat center }
 #unity-warning { position: absolute; left: 50%; top: 5%; transform: translate(-50%); background: white; padding: 10px; display: none }
+
+/* codex-responsive-webgl-start */
+html,
+body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background: #08050d;
+}
+
+#unity-container {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+#unity-canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+#unity-footer {
+  display: none;
+}
+/* codex-responsive-webgl-end */

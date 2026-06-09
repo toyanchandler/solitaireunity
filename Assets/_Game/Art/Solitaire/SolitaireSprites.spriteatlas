@@ -13,14 +13,27 @@ SpriteAtlas:
       serializedVersion: 2
       anisoLevel: 1
       compressionQuality: 50
-      maxTextureSize: 2048
+      maxTextureSize: 8192
       textureCompression: 0
       filterMode: 1
       generateMipMaps: 1
       readable: 0
       crunchedCompression: 0
       sRGB: 1
-    platformSettings: []
+    platformSettings:
+    - serializedVersion: 4
+      m_BuildTarget: WebGL
+      m_MaxTextureSize: 8192
+      m_ResizeAlgorithm: 0
+      m_TextureFormat: -1
+      m_TextureCompression: 0
+      m_CompressionQuality: 50
+      m_CrunchedCompression: 0
+      m_AllowsAlphaSplitting: 0
+      m_Overridden: 1
+      m_IgnorePlatformSupport: 0
+      m_AndroidETC2FallbackOverride: 0
+      m_ForceMaximumCompressionQuality_BC6H_BC7: 0
     packingSettings:
       serializedVersion: 2
       padding: 4
@@ -42,6 +55,7 @@ SpriteAtlas:
     - 0c51bf729c129402a8e85b56f1ba5cf9: 21300000
     - 7741a3b2c4b450fefe603d20f5879538: 21300000
     - 09535db2fc36d230441502fae487d7f7: 21300000
+    - dd1f6133fb564e47b235dddd9b374d1d: 21300000
     - d690c633398a4568ae06832297fb8438: 21300000
     - af859363b90bc765c73f58a51bd3a5fe: 21300000
     - 343fe4d31751c33e35d1a041826a5833: 21300000
@@ -61,6 +75,7 @@ SpriteAtlas:
     - 0a1e3377397ee84872064fc8c7d97a80: 21300000
     - 60b7b3b7b991a07ccacb6b3642f7f71b: 21300000
     - 96803d18b3bc62b2084cde8d083f9a28: 21300000
+    - f2e5005874c1427ba01a7d382041c6f3: 21300000
     - 89b39a580086bd2df7996318caa504ac: 21300000
     - 8de5f1688ad07ba418bdd0c4afe3c1f5: 21300000
     - 219167788a48bab051fb8ad293e9caaf: 21300000
@@ -101,6 +116,7 @@ SpriteAtlas:
   - {fileID: 21300000, guid: 0c51bf729c129402a8e85b56f1ba5cf9, type: 3}
   - {fileID: 21300000, guid: 7741a3b2c4b450fefe603d20f5879538, type: 3}
   - {fileID: 21300000, guid: 09535db2fc36d230441502fae487d7f7, type: 3}
+  - {fileID: 21300000, guid: dd1f6133fb564e47b235dddd9b374d1d, type: 3}
   - {fileID: 21300000, guid: d690c633398a4568ae06832297fb8438, type: 3}
   - {fileID: 21300000, guid: af859363b90bc765c73f58a51bd3a5fe, type: 3}
   - {fileID: 21300000, guid: 343fe4d31751c33e35d1a041826a5833, type: 3}
@@ -120,6 +136,7 @@ SpriteAtlas:
   - {fileID: 21300000, guid: 0a1e3377397ee84872064fc8c7d97a80, type: 3}
   - {fileID: 21300000, guid: 60b7b3b7b991a07ccacb6b3642f7f71b, type: 3}
   - {fileID: 21300000, guid: 96803d18b3bc62b2084cde8d083f9a28, type: 3}
+  - {fileID: 21300000, guid: f2e5005874c1427ba01a7d382041c6f3, type: 3}
   - {fileID: 21300000, guid: 89b39a580086bd2df7996318caa504ac, type: 3}
   - {fileID: 21300000, guid: 8de5f1688ad07ba418bdd0c4afe3c1f5, type: 3}
   - {fileID: 21300000, guid: 219167788a48bab051fb8ad293e9caaf, type: 3}
@@ -159,6 +176,7 @@ SpriteAtlas:
   - solitaire_card_drag_shadow_gen
   - card_clubs_Q
   - card_clubs_06
+  - card_selection_highlight
   - solitaire_start_hero
   - card_spades_J
   - card_clubs_09
@@ -178,6 +196,7 @@ SpriteAtlas:
   - card_spades_07
   - card_spades_09
   - card_spades_Q
+  - deck_ripple_soft
   - card_clubs_A
   - card_diamonds_06
   - card_hearts_K
