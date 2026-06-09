@@ -1,5 +1,5 @@
-using System.Collections;
 using _Game.Scripts.Project.SolitaireModule.Data;
+using DG.Tweening;
 using UnityEngine;
 
 namespace _Game.Scripts.Project.SolitaireModule.Views
@@ -9,12 +9,12 @@ namespace _Game.Scripts.Project.SolitaireModule.Views
     {
         private CardView _owner;
         private CardVisualStateMachine _visualStateMachine;
-        private Coroutine _presentationRoutine;
+        private Sequence _presentationSequence;
         private Vector3 _homeScale;
         private Quaternion _homeRotation;
         private bool _lastRenderedFaceUp;
 
-        public bool IsPresenting => _presentationRoutine != null;
+        public bool IsPresenting => _presentationSequence != null && _presentationSequence.IsActive();
 
         public void Initialize(CardView owner, CardVisualStateMachine visualStateMachine, Vector3 homeScale)
         {
@@ -36,12 +36,12 @@ namespace _Game.Scripts.Project.SolitaireModule.Views
 
         public void MoveTo(Vector3 targetPosition, float duration)
         {
-            StartPresentation(MoveToRoutine(targetPosition, duration, 0f));
+            StartPresentation(BuildMoveToSequence(targetPosition, duration, 0f));
         }
 
         public void PlayFlipReveal(CardState state, SolitaireDeckConfigSO config, float duration)
         {
-            StartPresentation(FlipRevealRoutine(state, config, duration, transform.position));
+            StartPresentation(BuildFlipRevealSequence(state, config, duration, transform.position));
         }
 
         public void PlayMoveThenFlip(
@@ -52,7 +52,7 @@ namespace _Game.Scripts.Project.SolitaireModule.Views
             float flipDuration,
             float arcHeight = 0f)
         {
-            StartPresentation(MoveThenFlipRoutine(targetPosition, state, config, moveDuration, flipDuration, arcHeight));
+            StartPresentation(BuildMoveThenFlipSequence(targetPosition, state, config, moveDuration, flipDuration, arcHeight));
         }
 
         public void PlayDealMove(
@@ -71,63 +71,58 @@ namespace _Game.Scripts.Project.SolitaireModule.Views
             }
 
             _owner.ApplyBackFace(state, config);
-            StartPresentation(DealMoveRoutine(targetPosition, moveDuration, arcHeight));
+            StartPresentation(BuildMoveToSequence(targetPosition, moveDuration, arcHeight));
         }
 
         public void PlayWinPop(float height, float duration)
         {
-            StartPresentation(WinPopRoutine(height, duration));
+            StartPresentation(BuildWinPopSequence(height, duration));
         }
 
         public void PlayInvalidFeedback(float duration)
         {
-            StartPresentation(InvalidFeedbackRoutine(duration));
+            StartPresentation(BuildInvalidFeedbackSequence(duration));
         }
 
         public void StopPresentation()
         {
-            if (_presentationRoutine != null)
-                StopCoroutine(_presentationRoutine);
+            if (_presentationSequence == null)
+                return;
 
-            _presentationRoutine = null;
+            _presentationSequence.Kill();
+            _presentationSequence = null;
         }
 
-        private void StartPresentation(IEnumerator routine)
+        private void OnDestroy()
         {
-            if (_presentationRoutine != null)
-                StopCoroutine(_presentationRoutine);
-
-            _presentationRoutine = StartCoroutine(routine);
+            _presentationSequence?.Kill();
+            _presentationSequence = null;
         }
 
-        private IEnumerator MoveToRoutine(Vector3 targetPosition, float duration, float arcHeight)
+        private void StartPresentation(Sequence sequence)
+        {
+            _presentationSequence?.Kill();
+            _presentationSequence = sequence;
+            sequence.OnComplete(() => _presentationSequence = null);
+            sequence.Play();
+        }
+
+        private Sequence BuildMoveToSequence(Vector3 targetPosition, float duration, float arcHeight)
         {
             _visualStateMachine?.SetState(CardVisualState.Moving);
-            Vector3 start = transform.position;
-            float elapsed = 0f;
 
-            while (elapsed < duration)
+            Sequence sequence = DOTween.Sequence();
+            sequence.Append(CreateArcMoveTween(targetPosition, duration, arcHeight));
+            sequence.AppendCallback(() =>
             {
-                elapsed += Time.deltaTime;
-                float t = Mathf.Clamp01(elapsed / duration);
-                float eased = EaseOutCubic(t);
-                Vector3 flat = Vector3.LerpUnclamped(start, targetPosition, eased);
-                float arc = Mathf.Sin(t * Mathf.PI) * arcHeight;
-                transform.position = flat + new Vector3(0f, arc, 0f);
-                yield return null;
-            }
+                transform.position = targetPosition;
+                _visualStateMachine?.SetState(_lastRenderedFaceUp ? CardVisualState.FaceUpIdle : CardVisualState.FaceDown);
+            });
 
-            transform.position = targetPosition;
-            _visualStateMachine?.SetState(_lastRenderedFaceUp ? CardVisualState.FaceUpIdle : CardVisualState.FaceDown);
-            _presentationRoutine = null;
+            return sequence;
         }
 
-        private IEnumerator DealMoveRoutine(Vector3 targetPosition, float duration, float arcHeight)
-        {
-            yield return MoveToRoutine(targetPosition, duration, arcHeight);
-        }
-
-        private IEnumerator MoveThenFlipRoutine(
+        private Sequence BuildMoveThenFlipSequence(
             Vector3 targetPosition,
             CardState state,
             SolitaireDeckConfigSO config,
@@ -137,25 +132,16 @@ namespace _Game.Scripts.Project.SolitaireModule.Views
         {
             _owner.ApplyBackFace(state, config);
             _visualStateMachine?.SetState(CardVisualState.Moving);
-            Vector3 start = transform.position;
-            float elapsed = 0f;
 
-            while (elapsed < moveDuration)
-            {
-                elapsed += Time.deltaTime;
-                float t = Mathf.Clamp01(elapsed / moveDuration);
-                float eased = EaseOutCubic(t);
-                Vector3 flat = Vector3.LerpUnclamped(start, targetPosition, eased);
-                float arc = Mathf.Sin(t * Mathf.PI) * arcHeight;
-                transform.position = flat + new Vector3(0f, arc, 0f);
-                yield return null;
-            }
+            Sequence sequence = DOTween.Sequence();
+            sequence.Append(CreateArcMoveTween(targetPosition, moveDuration, arcHeight));
+            sequence.AppendCallback(() => transform.position = targetPosition);
+            sequence.Append(BuildFlipRevealSequence(state, config, flipDuration, targetPosition));
 
-            transform.position = targetPosition;
-            yield return FlipRevealRoutine(state, config, flipDuration, targetPosition);
+            return sequence;
         }
 
-        private IEnumerator FlipRevealRoutine(
+        private Sequence BuildFlipRevealSequence(
             CardState state,
             SolitaireDeckConfigSO config,
             float duration,
@@ -167,99 +153,111 @@ namespace _Game.Scripts.Project.SolitaireModule.Views
             float halfDuration = duration * 0.5f;
             float lift = config.FlipLiftHeight;
             float tilt = config.FlipTiltDegrees;
-            float elapsed = 0f;
 
-            while (elapsed < halfDuration)
+            Sequence sequence = DOTween.Sequence();
+            sequence.Append(CreateFlipHalfTween(anchorPosition, lift, tilt, halfDuration, true));
+            sequence.AppendCallback(() =>
             {
-                elapsed += Time.deltaTime;
-                float t = Mathf.Clamp01(elapsed / halfDuration);
-                float eased = EaseInCubic(t);
-                float scaleX = Mathf.Lerp(1f, 0.02f, eased);
-                transform.localScale = new Vector3(_homeScale.x * scaleX, _homeScale.y, _homeScale.z);
-                transform.position = anchorPosition + new Vector3(0f, lift * eased, 0f);
-                transform.localRotation = Quaternion.Euler(0f, 0f, Mathf.Lerp(0f, tilt, eased));
-                yield return null;
-            }
-
-            _owner.ApplyFaceSprites(state, config, true);
-            _lastRenderedFaceUp = true;
-
-            elapsed = 0f;
-
-            while (elapsed < halfDuration)
+                _owner.ApplyFaceSprites(state, config, true);
+                _lastRenderedFaceUp = true;
+            });
+            sequence.Append(CreateFlipHalfTween(anchorPosition, lift, tilt, halfDuration, false));
+            sequence.AppendCallback(() =>
             {
-                elapsed += Time.deltaTime;
-                float t = Mathf.Clamp01(elapsed / halfDuration);
-                float eased = EaseOutCubic(t);
-                float scaleX = Mathf.Lerp(0.02f, 1f, eased);
-                transform.localScale = new Vector3(_homeScale.x * scaleX, _homeScale.y, _homeScale.z);
-                transform.position = anchorPosition + new Vector3(0f, lift * (1f - eased), 0f);
-                transform.localRotation = Quaternion.Euler(0f, 0f, Mathf.Lerp(tilt, 0f, eased));
-                yield return null;
-            }
+                transform.localScale = _homeScale;
+                transform.localRotation = _homeRotation;
+                transform.position = anchorPosition;
+                _visualStateMachine?.SetState(CardVisualState.FaceUpIdle);
+            });
 
-            transform.localScale = _homeScale;
-            transform.localRotation = _homeRotation;
-            transform.position = anchorPosition;
-            _visualStateMachine?.SetState(CardVisualState.FaceUpIdle);
-            _presentationRoutine = null;
+            return sequence;
         }
 
-        private IEnumerator InvalidFeedbackRoutine(float duration)
+        private Sequence BuildInvalidFeedbackSequence(float duration)
         {
             Vector3 start = transform.localPosition;
-            float elapsed = 0f;
 
-            while (elapsed < duration)
-            {
-                elapsed += Time.deltaTime;
-                float offset = Mathf.Sin(elapsed * 90f) * 0.035f;
-                transform.localPosition = start + new Vector3(offset, 0f, 0f);
-                yield return null;
-            }
+            Sequence sequence = DOTween.Sequence();
+            sequence.Append(
+                DOTween.To(() => 0f, elapsed =>
+                {
+                    float offset = Mathf.Sin(elapsed * 90f) * 0.035f;
+                    transform.localPosition = start + new Vector3(offset, 0f, 0f);
+                }, duration, duration));
+            sequence.AppendCallback(() => transform.localPosition = start);
 
-            transform.localPosition = start;
-            _presentationRoutine = null;
+            return sequence;
         }
 
-        private IEnumerator WinPopRoutine(float height, float duration)
+        private Sequence BuildWinPopSequence(float height, float duration)
         {
             _visualStateMachine?.SetState(CardVisualState.Moving);
+
             Vector3 start = transform.position;
             Vector3 peak = start + new Vector3(0f, height, 0f);
+            Vector3 popScale = _homeScale * 1.08f;
             float halfDuration = duration * 0.5f;
-            float elapsed = 0f;
 
-            while (elapsed < halfDuration)
+            Sequence sequence = DOTween.Sequence();
+            sequence.Append(CreateWinPopHalfTween(start, peak, _homeScale, popScale, halfDuration, true));
+            sequence.Append(CreateWinPopHalfTween(peak, start, popScale, _homeScale, halfDuration, false));
+            sequence.AppendCallback(() =>
             {
-                elapsed += Time.deltaTime;
-                float t = Mathf.Clamp01(elapsed / halfDuration);
-                float eased = EaseOutCubic(t);
-                transform.position = Vector3.LerpUnclamped(start, peak, eased);
-                transform.localScale = Vector3.LerpUnclamped(_homeScale, _homeScale * 1.08f, eased);
-                yield return null;
-            }
+                transform.position = start;
+                transform.localScale = _homeScale;
+                _visualStateMachine?.SetState(CardVisualState.FaceUpIdle);
+            });
 
-            elapsed = 0f;
-
-            while (elapsed < halfDuration)
-            {
-                elapsed += Time.deltaTime;
-                float t = Mathf.Clamp01(elapsed / halfDuration);
-                float eased = EaseInCubic(t);
-                transform.position = Vector3.LerpUnclamped(peak, start, eased);
-                transform.localScale = Vector3.LerpUnclamped(_homeScale * 1.08f, _homeScale, eased);
-                yield return null;
-            }
-
-            transform.position = start;
-            transform.localScale = _homeScale;
-            _visualStateMachine?.SetState(CardVisualState.FaceUpIdle);
-            _presentationRoutine = null;
+            return sequence;
         }
 
-        private static float EaseOutCubic(float t) => 1f - Mathf.Pow(1f - t, 3f);
+        private Tween CreateArcMoveTween(Vector3 targetPosition, float duration, float arcHeight)
+        {
+            Vector3 start = transform.position;
 
-        private static float EaseInCubic(float t) => t * t * t;
+            return DOTween.To(() => 0f, t =>
+                {
+                    Vector3 flat = Vector3.LerpUnclamped(start, targetPosition, t);
+                    float arc = Mathf.Sin(t * Mathf.PI) * arcHeight;
+                    transform.position = flat + new Vector3(0f, arc, 0f);
+                }, 1f, duration)
+                .SetEase(Ease.OutCubic);
+        }
+
+        private Tween CreateFlipHalfTween(
+            Vector3 anchorPosition,
+            float lift,
+            float tilt,
+            float duration,
+            bool closing)
+        {
+            return DOTween.To(() => 0f, t =>
+                {
+                    float scaleX = closing ? Mathf.Lerp(1f, 0.02f, t) : Mathf.Lerp(0.02f, 1f, t);
+                    transform.localScale = new Vector3(_homeScale.x * scaleX, _homeScale.y, _homeScale.z);
+                    transform.position = anchorPosition + new Vector3(0f, closing ? lift * t : lift * (1f - t), 0f);
+                    transform.localRotation = Quaternion.Euler(
+                        0f,
+                        0f,
+                        closing ? Mathf.Lerp(0f, tilt, t) : Mathf.Lerp(tilt, 0f, t));
+                }, 1f, duration)
+                .SetEase(closing ? Ease.InCubic : Ease.OutCubic);
+        }
+
+        private Tween CreateWinPopHalfTween(
+            Vector3 from,
+            Vector3 to,
+            Vector3 fromScale,
+            Vector3 toScale,
+            float duration,
+            bool rising)
+        {
+            return DOTween.To(() => 0f, t =>
+                {
+                    transform.position = Vector3.LerpUnclamped(from, to, t);
+                    transform.localScale = Vector3.LerpUnclamped(fromScale, toScale, t);
+                }, 1f, duration)
+                .SetEase(rising ? Ease.OutCubic : Ease.InCubic);
+        }
     }
 }
